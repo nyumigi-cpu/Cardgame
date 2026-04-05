@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>씹덕 카드게임 — 클래시 웨이브</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+:root {
+  --fire: #ff4444; --water: #4488ff; --wood: #44bb44;
+  --thunder: #ffdd00; --dark: #9944cc; --light: #ffee88;
+  --fire-bg: linear-gradient(135deg,#ff6b35,#c0392b);
+  --water-bg: linear-gradient(135deg,#3498db,#1a3a6c);
+  --wood-bg: linear-gradient(135deg,#27ae60,#145a32);
+  --thunder-bg: linear-gradient(135deg,#f1c40f,#b7950b);
+  --dark-bg: linear-gradient(135deg,#6c3483,#1a0a2e);
+  --light-bg: linear-gradient(135deg,#f9e547,#daa520);
+  --gold: #ffc832; --pink: #e94560; --cyan: #00d4ff;
+  --bg-dark: #0a0a1a; --bg-panel: rgba(255,255,255,0.04);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { font-family:'Noto Sans KR',sans-serif; background:var(--bg-dark); color:#eee; min-height:100vh; overflow-x:hidden; }
+
+/* ===== PARTICLE CANVAS ===== */
+#particleCanvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+
+/* ===== SCREENS ===== */
+.screen { display:none; position:relative; z-index:1; min-height:100vh; }
+.screen.active { display:flex; flex-direction:column; }
+
+/* ===== TITLE SCREEN ===== */
+#titleScreen {
+  align-items:center; justify-content:center; text-align:center;
+  background: radial-gradient(ellipse at center, #1a0a2e 0%, #0a0a1a 70%);
+}
+.title-logo {
+  font-size:3rem; font-weight:900; letter-spacing:-2px;
+  background:linear-gradient(135deg, var(--pink), var(--gold), var(--cyan), var(--pink));
+  background-size:300% 300%;
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+  animation: gradientShift 4s ease infinite;
+  text-shadow: none;
+  filter: drop-shadow(0 0 30px rgba(233,69,96,0.5));
+  margin-bottom:8px;
+}
+.title-sub {
+  font-size:1rem; color:#888; margin-bottom:40px;
+  letter-spacing:4px; text-transform:uppercase;
+}
+.title-cards {
+  display:flex; gap:16px; margin-bottom:40px; perspective:800px;
+}
+.title-card-preview {
+  width:80px; height:112px; border-radius:8px; position:relative;
+  animation: floatCard 3s ease-in-out infinite;
+  transform-style:preserve-3d;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+.title-card-preview:nth-child(1) { animation-delay:0s; }
+.title-card-preview:nth-child(2) { animation-delay:0.5s; }
+.title-card-preview:nth-child(3) { animation-delay:1s; }
+.title-card-preview:nth-child(4) { animation-delay:1.5s; }
+.title-card-preview:nth-child(5) { animation-delay:2s; }
+
+.btn-start {
+  padding:16px 48px; border:2px solid var(--pink); border-radius:30px;
+  background:transparent; color:var(--pink); font-family:inherit;
+  font-size:1.2rem; font-weight:700; cursor:pointer;
+  letter-spacing:3px; text-transform:uppercase;
+  transition:all 0.3s ease; position:relative; overflow:hidden;
+}
+.btn-start:hover, .btn-start:active {
+  background:var(--pink); color:#fff;
+  box-shadow:0 0 40px rgba(233,69,96,0.6);
+  transform:scale(1.05);
+}
+.btn-start::before {
+  content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%;
+  background:linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
+  animation: shimmer 2s infinite linear;
+}
+
+/* ===== BATTLE SCREEN ===== */
+#battleScreen { padding:8px; gap:4px; }
+
+/* HP Bar */
+.hp-section { display:flex; align-items:center; gap:8px; padding:4px 8px; }
+.hp-section.enemy { flex-direction:row-reverse; }
+.hp-label { font-size:0.7rem; font-weight:700; white-space:nowrap; min-width:50px; }
+.hp-bar-outer {
+  flex:1; height:22px; background:rgba(0,0,0,0.5); border-radius:11px;
+  border:1px solid rgba(255,255,255,0.1); overflow:hidden; position:relative;
+}
+.hp-bar-inner {
+  height:100%; border-radius:11px; transition:width 0.8s ease;
+  position:relative; overflow:hidden;
+}
+.hp-bar-inner.player-bar { background:linear-gradient(90deg, #2ecc71, #27ae60); }
+.hp-bar-inner.enemy-bar { background:linear-gradient(90deg, #e74c3c, #c0392b); }
+.hp-bar-inner::after {
+  content:''; position:absolute; top:0; left:0; right:0; height:50%;
+  background:linear-gradient(180deg, rgba(255,255,255,0.25), transparent);
+  border-radius:11px 11px 0 0;
+}
+.hp-text {
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  font-size:0.75rem; font-weight:900; text-shadow:0 1px 3px rgba(0,0,0,0.8);
+}
+.wave-gauge {
+  display:flex; gap:3px; align-items:center;
+}
+.wave-pip {
+  width:10px; height:10px; border-radius:50%; border:1px solid rgba(255,255,255,0.2);
+  background:rgba(255,255,255,0.05); transition:all 0.3s;
+}
+.wave-pip.filled {
+  background:var(--cyan); border-color:var(--cyan);
+  box-shadow:0 0 8px var(--cyan);
+}
+
+/* Battle Field */
+.battle-field {
+  flex:1; display:flex; flex-direction:column; gap:2px;
+  padding:4px; min-height:0;
+}
+.field-row {
+  display:flex; gap:8px; justify-content:center;
+  flex:1; min-height:0;
+}
+.slot {
+  flex:1; max-width:140px; border-radius:12px;
+  border:2px dashed rgba(255,255,255,0.15);
+  background:var(--bg-panel);
+  display:flex; align-items:center; justify-content:center;
+  position:relative; transition:all 0.3s;
+  cursor:pointer; min-height:80px;
+}
+.slot:hover { border-color:rgba(255,255,255,0.3); }
+.slot.droppable {
+  border-color:var(--cyan); background:rgba(0,212,255,0.05);
+  box-shadow:0 0 15px rgba(0,212,255,0.2);
+  animation: slotPulse 1.5s infinite;
+}
+.slot.has-card { border-style:solid; }
+.slot-label {
+  position:absolute; top:4px; left:50%; transform:translateX(-50%);
+  font-size:0.55rem; color:rgba(255,255,255,0.3); font-weight:700;
+}
+.vs-divider {
+  text-align:center; padding:2px; font-weight:900; font-size:0.9rem;
+  background:linear-gradient(90deg, transparent, rgba(233,69,96,0.3), transparent);
+  color:var(--pink); letter-spacing:8px;
+}
+
+/* ===== CARD (in slot / in hand) ===== */
+.card {
+  width:100%; height:100%; border-radius:10px; overflow:hidden;
+  position:relative; cursor:pointer;
+  transition:transform 0.3s, box-shadow 0.3s;
+}
+.card-face {
+  width:100%; height:100%; display:flex; flex-direction:column;
+  padding:6px; position:relative;
+}
+/* Element BG */
+.card[data-element="fire"] .card-face    { background:var(--fire-bg); }
+.card[data-element="water"] .card-face   { background:var(--water-bg); }
+.card[data-element="wood"] .card-face    { background:var(--wood-bg); }
+.card[data-element="thunder"] .card-face { background:var(--thunder-bg); }
+.card[data-element="dark"] .card-face    { background:var(--dark-bg); }
+.card[data-element="light"] .card-face   { background:var(--light-bg); }
+
+/* Card back (enemy hidden) */
+.card-back {
+  width:100%; height:100%; border-radius:10px;
+  background: repeating-linear-gradient(
+    45deg, #1a1a3a, #1a1a3a 10px, #151530 10px, #151530 20px
+  );
+  border:2px solid #333;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.5rem; position:relative; overflow:hidden;
+}
+.card-back::before {
+  content:''; position:absolute; inset:8px; border:1px solid rgba(255,255,255,0.08);
+  border-radius:6px;
+}
+.card-back::after {
+  content:''; position:absolute; top:-100%; left:-100%; width:300%; height:300%;
+  background:linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%);
+  animation:shimmer 4s infinite linear;
+}
+
+/* Rarity glow */
+.card[data-rarity="R"]   { box-shadow:0 0 10px rgba(70,130,230,0.4); border:1px solid #4682E6; }
+.card[data-rarity="SR"]  { box-shadow:0 0 15px rgba(180,100,255,0.5); border:1px solid #B464FF; }
+.card[data-rarity="SSR"] { box-shadow:0 0 20px rgba(255,200,50,0.6); border:1px solid var(--gold); }
+.card[data-rarity="UR"]  { box-shadow:0 0 25px rgba(255,50,50,0.7); border:1px solid #FF3232; }
+.card[data-rarity="N"]   { border:1px solid #555; }
+
+/* Holo shimmer for SSR/UR */
+.card[data-rarity="SSR"]::before,
+.card[data-rarity="UR"]::before {
+  content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%;
+  background:linear-gradient(45deg,
+    transparent 30%, rgba(255,215,0,0.15) 45%,
+    rgba(255,255,255,0.2) 50%, rgba(0,212,255,0.15) 55%, transparent 70%
+  );
+  animation:shimmer 2.5s infinite linear; z-index:10; pointer-events:none;
+}
+
+.card-top { display:flex; justify-content:space-between; align-items:center; }
+.card-cost {
+  width:22px; height:22px; border-radius:50%;
+  background:linear-gradient(135deg,#4a90d9,#2c5aa0);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:900; font-size:0.7rem; color:#fff;
+  border:1.5px solid rgba(255,255,255,0.3);
+}
+.card-element-icon { font-size:0.9rem; }
+.card-rarity-badge {
+  font-size:0.5rem; font-weight:900; padding:1px 4px; border-radius:3px;
+}
+.card-rarity-badge[data-r="N"]   { background:#666; }
+.card-rarity-badge[data-r="R"]   { background:#4682E6; }
+.card-rarity-badge[data-r="SR"]  { background:#B464FF; }
+.card-rarity-badge[data-r="SSR"] { background:linear-gradient(135deg,var(--gold),#FF8C00); color:#1a1a1a; }
+.card-rarity-badge[data-r="UR"]  { background:linear-gradient(135deg,#FF3232,#FF0066); }
+
+.card-art {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  font-size:1.8rem; min-height:30px;
+  border-radius:6px; margin:3px 0;
+  position:relative; overflow:hidden;
+}
+.card-art::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(transparent 50%, rgba(0,0,0,0.3));
+}
+
+.card-name-text {
+  font-weight:700; font-size:0.55rem; text-align:center;
+  text-shadow:0 1px 4px rgba(0,0,0,0.9);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.card-stats-row {
+  display:flex; justify-content:center; gap:8px;
+  font-size:0.6rem; font-weight:700;
+}
+.stat-atk { color:#ff6b6b; }
+.stat-hp { color:#51cf66; }
+.card-skill-text {
+  font-size:0.45rem; color:rgba(255,255,255,0.7); text-align:center;
+  background:rgba(0,0,0,0.3); border-radius:3px; padding:2px 3px;
+  line-height:1.2; margin-top:2px;
+}
+
+/* ===== HAND ===== */
+.hand-section {
+  padding:6px 4px; background:linear-gradient(0deg, rgba(0,0,0,0.6), transparent);
+}
+.hand-label {
+  font-size:0.6rem; color:#666; text-align:center; margin-bottom:4px;
+  letter-spacing:2px; text-transform:uppercase;
+}
+.hand-cards {
+  display:flex; gap:6px; overflow-x:auto; padding:4px;
+  justify-content:center; flex-wrap:nowrap;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.hand-cards::-webkit-scrollbar { display:none; }
+
+.hand-card-wrapper {
+  flex:0 0 auto; width:90px; height:126px;
+  transition:transform 0.3s, margin 0.3s;
+  cursor:pointer;
+}
+.hand-card-wrapper:hover { transform:translateY(-8px) scale(1.05); z-index:10; }
+.hand-card-wrapper.selected {
+  transform:translateY(-16px) scale(1.08);
+  z-index:20;
+  filter:brightness(1.2);
+}
+.hand-card-wrapper.selected::after {
+  content:'▲ 배치할 슬롯 선택'; position:absolute; bottom:-18px; left:50%;
+  transform:translateX(-50%); font-size:0.5rem; color:var(--cyan);
+  white-space:nowrap; font-weight:700; animation:blink 1s infinite;
+}
+
+/* ===== ACTION BAR ===== */
+.action-bar {
+  display:flex; gap:8px; padding:6px 12px; justify-content:center;
+}
+.btn-action {
+  padding:10px 28px; border-radius:25px; font-family:inherit;
+  font-weight:700; font-size:0.9rem; cursor:pointer;
+  border:2px solid; transition:all 0.3s; letter-spacing:1px;
+}
+.btn-clash {
+  border-color:var(--pink); color:var(--pink); background:transparent;
+}
+.btn-clash:hover, .btn-clash.ready {
+  background:var(--pink); color:#fff;
+  box-shadow:0 0 30px rgba(233,69,96,0.5);
+}
+.btn-clash:disabled {
+  opacity:0.3; cursor:not-allowed;
+  box-shadow:none; background:transparent; color:var(--pink);
+}
+.btn-reset-slots {
+  border-color:#666; color:#888; background:transparent;
+}
+.btn-reset-slots:hover { border-color:#aaa; color:#aaa; }
+
+/* ===== CLASH OVERLAY ===== */
+.clash-overlay {
+  display:none; position:fixed; inset:0; z-index:100;
+  background:rgba(0,0,0,0.85); backdrop-filter:blur(10px);
+  flex-direction:column; align-items:center; justify-content:center;
+  gap:20px;
+}
+.clash-overlay.active { display:flex; }
+.clash-title {
+  font-size:2.5rem; font-weight:900;
+  background:linear-gradient(135deg, var(--pink), var(--gold));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text; animation:clashPulse 0.5s ease;
+  letter-spacing:4px;
+}
+.clash-slot-result {
+  display:flex; align-items:center; gap:16px; padding:12px;
+  background:rgba(255,255,255,0.03); border-radius:12px;
+  min-width:300px; justify-content:center;
+  animation:slideInResult 0.4s ease;
+  border:1px solid rgba(255,255,255,0.05);
+}
+.clash-card-mini {
+  width:60px; height:80px; border-radius:8px; overflow:hidden;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-size:0.6rem; font-weight:700; text-align:center; padding:4px;
+}
+.clash-vs { font-size:1.2rem; font-weight:900; color:var(--pink); }
+.clash-result-text {
+  font-size:0.8rem; font-weight:700; text-align:center; min-width:80px;
+}
+.clash-result-text.win { color:#2ecc71; }
+.clash-result-text.lose { color:#e74c3c; }
+.clash-result-text.draw { color:#f1c40f; }
+.clash-dmg-text { font-size:0.7rem; color:#ff6b6b; }
+.clash-heal-text { font-size:0.7rem; color:#2ecc71; }
+
+.btn-next-turn {
+  padding:14px 40px; border:2px solid var(--cyan); border-radius:25px;
+  background:transparent; color:var(--cyan); font-family:inherit;
+  font-size:1rem; font-weight:700; cursor:pointer; letter-spacing:2px;
+  transition:all 0.3s; margin-top:16px;
+}
+.btn-next-turn:hover {
+  background:var(--cyan); color:#000;
+  box-shadow:0 0 30px rgba(0,212,255,0.5);
+}
+
+/* ===== END SCREEN ===== */
+.end-overlay {
+  display:none; position:fixed; inset:0; z-index:200;
+  background:rgba(0,0,0,0.9); backdrop-filter:blur(20px);
+  flex-direction:column; align-items:center; justify-content:center; gap:20px;
+}
+.end-overlay.active { display:flex; }
+.end-title {
+  font-size:3rem; font-weight:900; letter-spacing:4px;
+}
+.end-title.victory {
+  background:linear-gradient(135deg, var(--gold), #FF8C00, var(--gold));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  animation:gradientShift 2s infinite;
+  filter:drop-shadow(0 0 30px rgba(255,200,50,0.5));
+}
+.end-title.defeat {
+  color:#e74c3c;
+  text-shadow:0 0 30px rgba(231,76,60,0.5);
+}
+.end-sub { font-size:1rem; color:#888; }
+.btn-restart {
+  padding:14px 40px; border:2px solid var(--gold); border-radius:25px;
+  background:transparent; color:var(--gold); font-family:inherit;
+  font-size:1rem; font-weight:700; cursor:pointer; letter-spacing:2px;
+  transition:all 0.3s;
+}
+.btn-restart:hover {
+  background:var(--gold); color:#000;
+  box-shadow:0 0 30px rgba(255,200,50,0.5);
+}
+
+/* ===== TURN INDICATOR ===== */
+.turn-indicator {
+  text-align:center; font-size:0.7rem; color:rgba(255,255,255,0.4);
+  padding:2px; letter-spacing:2px;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes gradientShift {
+  0%,100% { background-position:0% 50%; }
+  50% { background-position:100% 50%; }
+}
+@keyframes shimmer {
+  0% { transform:translateX(-100%) translateY(-100%); }
+  100% { transform:translateX(100%) translateY(100%); }
+}
+@keyframes floatCard {
+  0%,100% { transform:translateY(0) rotateY(0deg); }
+  25% { transform:translateY(-10px) rotateY(5deg); }
+  75% { transform:translateY(-5px) rotateY(-5deg); }
+}
+@keyframes slotPulse {
+  0%,100% { box-shadow:0 0 15px rgba(0,212,255,0.2); }
+  50% { box-shadow:0 0 25px rgba(0,212,255,0.4); }
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+@keyframes clashPulse {
+  0% { transform:scale(0.5); opacity:0; }
+  50% { transform:scale(1.2); }
+  100% { transform:scale(1); opacity:1; }
+}
+@keyframes slideInResult {
+  from { transform:translateX(-30px); opacity:0; }
+  to { transform:translateX(0); opacity:1; }
+}
+@keyframes damageFlash {
+  0%,100% { filter:brightness(1); }
+  50% { filter:brightness(2) saturate(0); }
+}
+@keyframes floatDmg {
+  0% { transform:translateY(0); opacity:1; }
+  100% { transform:translateY(-40px); opacity:0; }
+}
+@keyframes waveStrike {
+  0% { transform:scale(0); opacity:0; }
+  50% { transform:scale(1.5); opacity:1; }
+  100% { transform:scale(2); opacity:0; }
+}
+
+/* ===== MOBILE ===== */
+@media (max-width:480px) {
+  .title-logo { font-size:2rem; }
+  .title-card-preview { width:56px; height:78px; }
+  .hand-card-wrapper { width:75px; height:105px; }
+  .clash-slot-result { min-width:auto; flex-wrap:wrap; }
+}
+@media (min-width:768px) {
+  .slot { max-width:180px; min-height:120px; }
+  .hand-card-wrapper { width:110px; height:154px; }
+  .card-name-text { font-size:0.7rem; }
+  .card-art { font-size:2.5rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- PARTICLES -->
+<canvas id="particleCanvas"></canvas>
+
+<!-- ===== TITLE SCREEN ===== -->
+<div id="titleScreen" class="screen active">
+  <div class="title-logo">씹덕 카드게임</div>
+  <div class="title-sub">클래시 웨이브</div>
+  <div class="title-cards" id="titleCards"></div>
+  <button class="btn-start" id="btnStart">BATTLE START</button>
+</div>
+
+<!-- ===== BATTLE SCREEN ===== -->
+<div id="battleScreen" class="screen">
+  <!-- Enemy HP -->
+  <div class="hp-section enemy">
+    <div class="hp-label">🤖 ENEMY</div>
+    <div class="hp-bar-outer">
+      <div class="hp-bar-inner enemy-bar" id="enemyHpBar" style="width:100%"></div>
+      <span class="hp-text" id="enemyHpText">30/30</span>
+    </div>
+    <div class="wave-gauge" id="enemyWave"></div>
+  </div>
+
+  <div class="turn-indicator" id="turnIndicator">TURN 1</div>
+
+  <!-- Battle Field -->
+  <div class="battle-field">
+    <!-- Enemy slots -->
+    <div class="field-row" id="enemySlots">
+      <div class="slot enemy-slot" data-slot="0"><span class="slot-label">SLOT 1</span></div>
+      <div class="slot enemy-slot" data-slot="1"><span class="slot-label">SLOT 2</span></div>
+      <div class="slot enemy-slot" data-slot="2"><span class="slot-label">SLOT 3</span></div>
+    </div>
+
+    <div class="vs-divider">⚔ CLASH ⚔</div>
+
+    <!-- Player slots -->
+    <div class="field-row" id="playerSlots">
+      <div class="slot player-slot" data-slot="0"><span class="slot-label">SLOT 1</span></div>
+      <div class="slot player-slot" data-slot="1"><span class="slot-label">SLOT 2</span></div>
+      <div class="slot player-slot" data-slot="2"><span class="slot-label">SLOT 3</span></div>
+    </div>
+  </div>
+
+  <!-- Player HP -->
+  <div class="hp-section player">
+    <div class="hp-label">👤 YOU</div>
+    <div class="hp-bar-outer">
+      <div class="hp-bar-inner player-bar" id="playerHpBar" style="width:100%"></div>
+      <span class="hp-text" id="playerHpText">30/30</span>
+    </div>
+    <div class="wave-gauge" id="playerWave"></div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="action-bar">
+    <button class="btn-action btn-reset-slots" id="btnResetSlots">초기화</button>
+    <button class="btn-action btn-clash" id="btnClash" disabled>⚔ CLASH!</button>
+  </div>
+
+  <!-- Hand -->
+  <div class="hand-section">
+    <div class="hand-label">HAND</div>
+    <div class="hand-cards" id="handCards"></div>
+  </div>
+</div>
+
+<!-- ===== CLASH OVERLAY ===== -->
+<div class="clash-overlay" id="clashOverlay">
+  <div class="clash-title">⚔ CLASH! ⚔</div>
+  <div id="clashResults"></div>
+  <div id="clashSummary" style="text-align:center;"></div>
+  <button class="btn-next-turn" id="btnNextTurn">다음 턴 →</button>
+</div>
+
+<!-- ===== END OVERLAY ===== -->
+<div class="end-overlay" id="endOverlay">
+  <div class="end-title" id="endTitle">VICTORY</div>
+  <div class="end-sub" id="endSub"></div>
+  <button class="btn-restart" id="btnRestart">다시 하기</button>
+</div>
+
+<!-- SCRIPTS -->
+
+
+
+<script>
+// 카드 데이터베이스
+const CARDS_DB = [
+  // ===== 캐릭터 카드 =====
+  {
+    id: "char_001",
+    name: "화염의 검사 아카네",
+    rarity: "SSR",
+    element: "fire",
+    type: "character",
+    cost: 5,
+    atk: 8,
+    hp: 5,
+    skill: { name: "블레이즈 슬래시", desc: "화속성 상성 추가 데미지 +3" },
+    flavor: "불꽃은 내 검에서 태어나 적의 잿더미 위에서 잠든다.",
+    art: "⚔️"
+  },
+  {
+    id: "char_002",
+    name: "수호의 무녀 미즈키",
+    rarity: "SR",
+    element: "water",
+    type: "character",
+    cost: 4,
+    atk: 4,
+    hp: 8,
+    skill: { name: "치유의 물결", desc: "클래시 승리 시 플레이어 HP 2 회복" },
+    flavor: "이 물은 상처를 씻고, 마음을 채워줍니다.",
+    art: "🏯"
+  },
+  {
+    id: "char_003",
+    name: "번개 고양이 라이냥",
+    rarity: "R",
+    element: "thunder",
+    type: "character",
+    cost: 2,
+    atk: 5,
+    hp: 3,
+    skill: { name: "스파크 러시", desc: "빈 슬롯 공격 시 데미지 +2" },
+    flavor: "냥냥! 찌릿찌릿하다냥~!",
+    art: "🐱"
+  },
+  {
+    id: "char_004",
+    name: "숲의 정령 리아나",
+    rarity: "SR",
+    element: "wood",
+    type: "character",
+    cost: 3,
+    atk: 5,
+    hp: 6,
+    skill: { name: "자연의 가시", desc: "클래시 패배 시 상대에 2 반사 데미지" },
+    flavor: "숲이 살아 숨 쉬는 한, 나도 쓰러지지 않아.",
+    art: "🌸"
+  },
+  {
+    id: "char_005",
+    name: "암흑기사 제로",
+    rarity: "SSR",
+    element: "dark",
+    type: "character",
+    cost: 6,
+    atk: 9,
+    hp: 6,
+    skill: { name: "다크 이클립스", desc: "광 속성에 즉사 판정 (ATK 2배)" },
+    flavor: "빛이 있는 곳에 반드시 그림자가 있다.",
+    art: "🗡️"
+  },
+  {
+    id: "char_006",
+    name: "성녀 루미나",
+    rarity: "SSR",
+    element: "light",
+    type: "character",
+    cost: 6,
+    atk: 6,
+    hp: 9,
+    skill: { name: "홀리 래디언스", desc: "암 속성에 데미지 2배 + 아군 HP 2 회복" },
+    flavor: "어둠이 짙을수록, 빛은 더 눈부시게 빛나는 법이에요.",
+    art: "👼"
+  },
+  {
+    id: "char_007",
+    name: "폭풍의 사무라이 진",
+    rarity: "SR",
+    element: "thunder",
+    type: "character",
+    cost: 4,
+    atk: 7,
+    hp: 4,
+    skill: { name: "일섬", desc: "선공 시 ATK +2" },
+    flavor: "바람보다 빠른 검은 번개를 가른다.",
+    art: "⛩️"
+  },
+  {
+    id: "char_008",
+    name: "빙결의 마녀 유키",
+    rarity: "SR",
+    element: "water",
+    type: "character",
+    cost: 5,
+    atk: 6,
+    hp: 7,
+    skill: { name: "프로스트 체인", desc: "상대 ATK -2 약화" },
+    flavor: "모든 것은 얼어붙어야 아름다워지는 법.",
+    art: "❄️"
+  },
+  {
+    id: "char_009",
+    name: "화산룡 이프리트",
+    rarity: "SSR",
+    element: "fire",
+    type: "character",
+    cost: 7,
+    atk: 10,
+    hp: 7,
+    skill: { name: "헬파이어 브레스", desc: "클래시 승리 시 인접 슬롯에 3 스플래시 데미지" },
+    flavor: "대지가 울부짖고, 하늘이 붉게 물든다.",
+    art: "🐉"
+  },
+  {
+    id: "char_010",
+    name: "그림자 닌자 카게",
+    rarity: "R",
+    element: "dark",
+    type: "character",
+    cost: 3,
+    atk: 6,
+    hp: 3,
+    skill: { name: "그림자 분신", desc: "빈 슬롯 공격 시 데미지 +3" },
+    flavor: "보이지 않는 것이 가장 치명적이다.",
+    art: "🥷"
+  },
+  {
+    id: "char_011",
+    name: "대지의 수호자 가이아",
+    rarity: "SR",
+    element: "wood",
+    type: "character",
+    cost: 5,
+    atk: 4,
+    hp: 10,
+    skill: { name: "대지의 축복", desc: "클래시 무승부 시 플레이어 HP 3 회복" },
+    flavor: "이 대지 위의 모든 생명은 내가 지킨다.",
+    art: "🌳"
+  },
+  {
+    id: "char_012",
+    name: "천사장 미카엘",
+    rarity: "UR",
+    element: "light",
+    type: "character",
+    cost: 8,
+    atk: 9,
+    hp: 10,
+    skill: { name: "디바인 저지먼트", desc: "웨이브 게이지 MAX 시 ATK 2배" },
+    flavor: "심판의 시간이 왔다. 모든 어둠은 여기서 끝난다.",
+    art: "✨"
+  },
+  // ===== 마법 카드 =====
+  {
+    id: "spell_001",
+    name: "화염폭풍",
+    rarity: "R",
+    element: "fire",
+    type: "spell",
+    cost: 3,
+    atk: 6,
+    hp: 0,
+    skill: { name: "화염폭풍", desc: "전 슬롯에 3 데미지 (범위 공격)" },
+    flavor: "하늘에서 불이 비처럼 쏟아진다.",
+    art: "🌋"
+  },
+  {
+    id: "spell_002",
+    name: "절대영도",
+    rarity: "SR",
+    element: "water",
+    type: "spell",
+    cost: 4,
+    atk: 5,
+    hp: 0,
+    skill: { name: "절대영도", desc: "상대 ATK를 0으로 만듦 (1슬롯)" },
+    flavor: "영하 273도. 모든 움직임이 멈추는 온도.",
+    art: "🧊"
+  },
+  {
+    id: "spell_003",
+    name: "번개 가르기",
+    rarity: "R",
+    element: "thunder",
+    type: "spell",
+    cost: 2,
+    atk: 7,
+    hp: 0,
+    skill: { name: "번개 가르기", desc: "ATK가 높지만 반격에 즉사" },
+    flavor: "일격에 모든 것을 건다.",
+    art: "⚡"
+  },
+  {
+    id: "spell_004",
+    name: "생명의 나무",
+    rarity: "R",
+    element: "wood",
+    type: "spell",
+    cost: 3,
+    atk: 2,
+    hp: 0,
+    skill: { name: "생명의 나무", desc: "클래시 결과와 무관하게 HP 4 회복" },
+    flavor: "뿌리 깊은 나무는 결코 쓰러지지 않는다.",
+    art: "🌿"
+  }
+];
+
+// 속성 상성 테이블
+const ELEMENT_ADVANTAGE = {
+  fire: 'wood',
+  wood: 'thunder',
+  thunder: 'water',
+  water: 'fire',
+  dark: 'light',
+  light: 'dark'
+};
+
+const ELEMENT_ICONS = {
+  fire: '🔥', water: '💧', wood: '🌿',
+  thunder: '⚡', dark: '🌙', light: '☀️'
+};
+
+const ELEMENT_NAMES = {
+  fire: '화', water: '수', wood: '목',
+  thunder: '뇌', dark: '암', light: '광'
+};
+
+const RARITY_COLORS = {
+  N: '#888888', R: '#4682E6', SR: '#B464FF', SSR: '#FFC832', UR: '#FF3232'
+};
+
+// ===== 클래시 웨이브 배틀 엔진 =====
+
+class BattleEngine {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.player = { hp: 30, maxHp: 30, wave: 0, deck: [], hand: [], slots: [null, null, null] };
+    this.enemy = { hp: 30, maxHp: 30, wave: 0, deck: [], hand: [], slots: [null, null, null] };
+    this.turn = 0;
+    this.phase = 'title'; // title, prep, deploy, clash, resolve, end
+    this.clashResults = [];
+    this.log = [];
+  }
+
+  // 덱 초기화: 카드 DB에서 랜덤 12장
+  initDecks() {
+    const shuffled = [...CARDS_DB].sort(() => Math.random() - 0.5);
+    // 양쪽 다 같은 풀에서 뽑되 복사본 사용
+    this.player.deck = shuffled.slice(0, 12).map(c => ({...c, uid: 'p_' + c.id + '_' + Math.random().toString(36).substr(2,4)}));
+    this.enemy.deck = shuffled.slice(0, 12).map(c => ({...c, uid: 'e_' + c.id + '_' + Math.random().toString(36).substr(2,4)}));
+
+    // 셔플
+    this.player.deck.sort(() => Math.random() - 0.5);
+    this.enemy.deck.sort(() => Math.random() - 0.5);
+  }
+
+  // 초기 핸드 드로우
+  initialDraw() {
+    for (let i = 0; i < 4; i++) {
+      this.drawCard(this.player);
+      this.drawCard(this.enemy);
+    }
+  }
+
+  drawCard(who) {
+    if (who.deck.length === 0) return null;
+    const card = who.deck.pop();
+    who.hand.push(card);
+    return card;
+  }
+
+  // 턴 시작
+  startTurn() {
+    this.turn++;
+    this.phase = 'deploy';
+    this.player.slots = [null, null, null];
+    this.enemy.slots = [null, null, null];
+    this.clashResults = [];
+
+    // 턴 2부터 드로우
+    if (this.turn > 1) {
+      this.drawCard(this.player);
+      this.drawCard(this.enemy);
+    }
+
+    // 덱 소진 시 리셔플 (무한 게임 방지는 나중에)
+    this.log.push(`━━ 턴 ${this.turn} 시작 ━━`);
+  }
+
+  // 플레이어 카드 배치
+  placeCard(slotIndex, cardUid) {
+    const idx = this.player.hand.findIndex(c => c.uid === cardUid);
+    if (idx === -1) return false;
+
+    // 이미 슬롯에 있는 카드 되돌리기
+    if (this.player.slots[slotIndex]) {
+      this.player.hand.push(this.player.slots[slotIndex]);
+    }
+
+    this.player.slots[slotIndex] = this.player.hand.splice(idx, 1)[0];
+    return true;
+  }
+
+  // 슬롯에서 카드 회수
+  removeFromSlot(slotIndex) {
+    if (this.player.slots[slotIndex]) {
+      this.player.hand.push(this.player.slots[slotIndex]);
+      this.player.slots[slotIndex] = null;
+    }
+  }
+
+  // AI 카드 배치
+  aiPlaceCards() {
+    const hand = this.enemy.hand;
+    if (hand.length === 0) return;
+
+    // 전략: 2~3장 배치, 강한 카드 우선
+    const sorted = [...hand].sort((a, b) => b.atk - a.atk);
+    const numToPlace = Math.min(hand.length, Math.random() > 0.3 ? 3 : 2);
+
+    // 슬롯 랜덤 배치
+    const slotOrder = [0, 1, 2].sort(() => Math.random() - 0.5);
+
+    for (let i = 0; i < numToPlace; i++) {
+      const card = sorted[i];
+      const hIdx = this.enemy.hand.findIndex(c => c.uid === card.uid);
+      if (hIdx !== -1) {
+        this.enemy.slots[slotOrder[i]] = this.enemy.hand.splice(hIdx, 1)[0];
+      }
+    }
+  }
+
+  // 속성 유불리 판정
+  getElementMultiplier(attackerElement, defenderElement) {
+    if (ELEMENT_ADVANTAGE[attackerElement] === defenderElement) return 1.5;
+    if (ELEMENT_ADVANTAGE[defenderElement] === attackerElement) return 0.75;
+    return 1.0;
+  }
+
+  // 유효 ATK 계산 (스킬 포함)
+  getEffectiveAtk(card, opponentCard, who) {
+    let atk = card.atk;
+    const skill = card.skill.desc;
+
+    // 스킬 효과 적용
+    if (skill.includes('빈 슬롯') && !opponentCard) {
+      const bonus = parseInt(skill.match(/\+(\d)/)?.[1] || 2);
+      atk += bonus;
+    }
+    if (skill.includes('선공') && card.atk >= (opponentCard?.atk || 0)) {
+      atk += 2;
+    }
+    if (skill.includes('상대 ATK를 0')) {
+      // 이 카드가 있으면 상대 ATK 0 처리 (resolve에서 처리)
+    }
+    if (skill.includes('웨이브 게이지 MAX') && who.wave >= 5) {
+      atk *= 2;
+    }
+
+    // 속성 배율
+    if (opponentCard) {
+      // 즉사 판정 (암→광, 광→암 특수)
+      if (skill.includes('즉사') && ELEMENT_ADVANTAGE[card.element] === opponentCard.element) {
+        atk *= 2;
+      }
+      if (skill.includes('데미지 2배') && ELEMENT_ADVANTAGE[card.element] === opponentCard.element) {
+        atk *= 2;
+      }
+
+      const mult = this.getElementMultiplier(card.element, opponentCard.element);
+      atk = Math.floor(atk * mult);
+
+      // 상대 약화 스킬
+      if (skill.includes('ATK -2')) {
+        // 적용은 상대에게 (resolve에서)
+      }
+    }
+
+    return atk;
+  }
+
+  // 클래시 해결!
+  resolveClash() {
+    this.phase = 'clash';
+    this.clashResults = [];
+
+    for (let i = 0; i < 3; i++) {
+      const pCard = this.player.slots[i];
+      const eCard = this.enemy.slots[i];
+
+      const result = {
+        slot: i,
+        playerCard: pCard,
+        enemyCard: eCard,
+        winner: null,
+        playerDmg: 0,  // 플레이어가 받는 데미지
+        enemyDmg: 0,   // 적이 받는 데미지
+        playerHeal: 0,
+        enemyHeal: 0,
+        effects: []
+      };
+
+      if (!pCard && !eCard) {
+        result.winner = 'none';
+        result.effects.push('빈 슬롯 — 아무 일도 없음');
+      } else if (pCard && !eCard) {
+        // 플레이어 카드 직격
+        let dmg = this.getEffectiveAtk(pCard, null, this.player);
+        result.enemyDmg = dmg;
+        result.winner = 'player';
+        result.effects.push(`${pCard.name} 직격! ${dmg} 데미지`);
+        this.player.wave++;
+      } else if (!pCard && eCard) {
+        // 적 카드 직격
+        let dmg = this.getEffectiveAtk(eCard, null, this.enemy);
+        result.playerDmg = dmg;
+        result.winner = 'enemy';
+        result.effects.push(`${eCard.name} 직격! ${dmg} 데미지`);
+        this.enemy.wave++;
+      } else {
+        // 양쪽 모두 카드 있음 — 클래시!
+        let pAtk = this.getEffectiveAtk(pCard, eCard, this.player);
+        let eAtk = this.getEffectiveAtk(eCard, pCard, this.enemy);
+
+        // 약화 스킬 적용
+        if (pCard.skill.desc.includes('ATK -2')) eAtk = Math.max(0, eAtk - 2);
+        if (eCard.skill.desc.includes('ATK -2')) pAtk = Math.max(0, pAtk - 2);
+
+        // 절대영도 (ATK 0) 스킬
+        if (pCard.skill.desc.includes('ATK를 0')) eAtk = 0;
+        if (eCard.skill.desc.includes('ATK를 0')) pAtk = 0;
+
+        const diff = pAtk - eAtk;
+
+        if (diff > 0) {
+          result.winner = 'player';
+          result.enemyDmg = diff;
+          this.player.wave++;
+          result.effects.push(`${pCard.name}(${pAtk}) vs ${eCard.name}(${eAtk}) → 승리! ${diff} 데미지`);
+
+          // 반사 데미지
+          if (eCard.skill.desc.includes('반사')) {
+            const reflect = parseInt(eCard.skill.desc.match(/(\d)/)?.[1] || 2);
+            result.playerDmg += reflect;
+            result.effects.push(`반사 데미지 ${reflect}!`);
+          }
+        } else if (diff < 0) {
+          result.winner = 'enemy';
+          result.playerDmg = Math.abs(diff);
+          this.enemy.wave++;
+          result.effects.push(`${pCard.name}(${pAtk}) vs ${eCard.name}(${eAtk}) → 패배! ${Math.abs(diff)} 데미지`);
+
+          if (pCard.skill.desc.includes('반사')) {
+            const reflect = parseInt(pCard.skill.desc.match(/(\d)/)?.[1] || 2);
+            result.enemyDmg += reflect;
+            result.effects.push(`반사 데미지 ${reflect}!`);
+          }
+        } else {
+          result.winner = 'draw';
+          result.effects.push(`${pCard.name}(${pAtk}) vs ${eCard.name}(${eAtk}) → 무승부!`);
+
+          // 무승부 회복 스킬
+          if (pCard.skill.desc.includes('무승부')) {
+            const heal = parseInt(pCard.skill.desc.match(/HP (\d)/)?.[1] || 3);
+            result.playerHeal = heal;
+            result.effects.push(`${pCard.name} 무승부 효과! HP ${heal} 회복`);
+          }
+          if (eCard.skill.desc.includes('무승부')) {
+            const heal = parseInt(eCard.skill.desc.match(/HP (\d)/)?.[1] || 3);
+            result.enemyHeal = heal;
+          }
+        }
+
+        // 승리 시 회복 스킬
+        if (result.winner === 'player' && pCard.skill.desc.includes('클래시 승리 시') && pCard.skill.desc.includes('회복')) {
+          const heal = parseInt(pCard.skill.desc.match(/HP (\d)/)?.[1] || 2);
+          result.playerHeal += heal;
+          result.effects.push(`${pCard.name} 승리 보너스! HP ${heal} 회복`);
+        }
+        if (result.winner === 'enemy' && eCard.skill.desc.includes('클래시 승리 시') && eCard.skill.desc.includes('회복')) {
+          const heal = parseInt(eCard.skill.desc.match(/HP (\d)/)?.[1] || 2);
+          result.enemyHeal += heal;
+        }
+
+        // 스플래시 데미지 (인접 슬롯)
+        if (result.winner === 'player' && pCard.skill.desc.includes('스플래시')) {
+          const splash = parseInt(pCard.skill.desc.match(/(\d) 스플래시/)?.[1] || 3);
+          result.effects.push(`스플래시! 인접 슬롯 ${splash} 데미지`);
+          result.splashDmg = { who: 'enemy', amount: splash, fromSlot: i };
+        }
+        if (result.winner === 'enemy' && eCard.skill.desc.includes('스플래시')) {
+          const splash = parseInt(eCard.skill.desc.match(/(\d) 스플래시/)?.[1] || 3);
+          result.splashDmg = { who: 'player', amount: splash, fromSlot: i };
+        }
+
+        // 화염폭풍/범위 공격
+        if (pCard.skill.desc.includes('범위 공격')) {
+          result.effects.push(`${pCard.name} 범위 공격!`);
+          result.aoeDmg = { who: 'enemy', amount: 3 };
+        }
+        if (eCard.skill.desc.includes('범위 공격')) {
+          result.aoeDmg = { who: 'player', amount: 3 };
+        }
+
+        // 번개 가르기 (반격에 즉사)
+        if (pCard.skill.desc.includes('반격에 즉사') && result.winner !== 'player') {
+          result.effects.push(`${pCard.name} 반격에 즉사!`);
+        }
+        if (eCard.skill.desc.includes('반격에 즉사') && result.winner !== 'enemy') {
+          result.effects.push(`${eCard.name} 반격에 즉사!`);
+        }
+      }
+
+      // 생명의 나무 (무조건 회복)
+      if (pCard && pCard.skill.desc.includes('무관하게')) {
+        const heal = parseInt(pCard.skill.desc.match(/HP (\d)/)?.[1] || 4);
+        result.playerHeal += heal;
+        result.effects.push(`${pCard.name} 무조건 회복! HP +${heal}`);
+      }
+      if (eCard && eCard.skill.desc.includes('무관하게')) {
+        const heal = parseInt(eCard.skill.desc.match(/HP (\d)/)?.[1] || 4);
+        result.enemyHeal += heal;
+      }
+
+      this.clashResults.push(result);
+    }
+
+    // 스플래시/AOE 후처리
+    for (const r of this.clashResults) {
+      if (r.splashDmg) {
+        const adj = [r.splashDmg.fromSlot - 1, r.splashDmg.fromSlot + 1].filter(s => s >= 0 && s < 3);
+        for (const s of adj) {
+          if (r.splashDmg.who === 'enemy') {
+            this.clashResults[s].enemyDmg += r.splashDmg.amount;
+          } else {
+            this.clashResults[s].playerDmg += r.splashDmg.amount;
+          }
+        }
+      }
+      if (r.aoeDmg) {
+        for (let j = 0; j < 3; j++) {
+          if (j === r.slot) continue;
+          if (r.aoeDmg.who === 'enemy') {
+            this.clashResults[j].enemyDmg += r.aoeDmg.amount;
+          } else {
+            this.clashResults[j].playerDmg += r.aoeDmg.amount;
+          }
+        }
+      }
+    }
+
+    // 데미지/회복 적용
+    let totalPlayerDmg = 0, totalEnemyDmg = 0;
+    let totalPlayerHeal = 0, totalEnemyHeal = 0;
+
+    for (const r of this.clashResults) {
+      totalPlayerDmg += r.playerDmg;
+      totalEnemyDmg += r.enemyDmg;
+      totalPlayerHeal += r.playerHeal;
+      totalEnemyHeal += r.enemyHeal;
+    }
+
+    this.player.hp = Math.min(this.player.maxHp, Math.max(0, this.player.hp - totalPlayerDmg + totalPlayerHeal));
+    this.enemy.hp = Math.min(this.enemy.maxHp, Math.max(0, this.enemy.hp - totalEnemyDmg + totalEnemyHeal));
+
+    // 웨이브 게이지 캡
+    this.player.wave = Math.min(5, this.player.wave);
+    this.enemy.wave = Math.min(5, this.enemy.wave);
+
+    // 웨이브 스트라이크 체크
+    if (this.player.wave >= 5) {
+      this.enemy.hp = Math.max(0, this.enemy.hp - 5);
+      this.player.wave = 0;
+      this.log.push('⚡ 플레이어 웨이브 스트라이크! 5 데미지!');
+      this.clashResults.push({ special: 'wave_strike', who: 'player', dmg: 5 });
+    }
+    if (this.enemy.wave >= 5) {
+      this.player.hp = Math.max(0, this.player.hp - 5);
+      this.enemy.wave = 0;
+      this.log.push('⚡ 적 웨이브 스트라이크! 5 데미지!');
+      this.clashResults.push({ special: 'wave_strike', who: 'enemy', dmg: 5 });
+    }
+
+    // 승패 체크
+    if (this.player.hp <= 0 && this.enemy.hp <= 0) {
+      this.phase = 'end';
+      this.winner = 'draw';
+    } else if (this.player.hp <= 0) {
+      this.phase = 'end';
+      this.winner = 'enemy';
+    } else if (this.enemy.hp <= 0) {
+      this.phase = 'end';
+      this.winner = 'player';
+    } else {
+      this.phase = 'resolve';
+    }
+
+    return this.clashResults;
+  }
+}
+
+// ===== 씹덕 카드게임 — 메인 앱 컨트롤러 =====
+
+const engine = new BattleEngine();
+let selectedCardUid = null;
+
+// ===== PARTICLE SYSTEM =====
+const particleCanvas = document.getElementById('particleCanvas');
+const pCtx = particleCanvas.getContext('2d');
+let particles = [];
+
+function resizeCanvas() {
+  particleCanvas.width = window.innerWidth;
+  particleCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+  reset() {
+    this.x = Math.random() * particleCanvas.width;
+    this.y = Math.random() * particleCanvas.height;
+    this.size = Math.random() * 2 + 0.5;
+    this.speedY = -(Math.random() * 0.5 + 0.1);
+    this.speedX = (Math.random() - 0.5) * 0.3;
+    this.opacity = Math.random() * 0.5 + 0.1;
+    this.hue = Math.random() > 0.5 ? 340 : 200; // pink or cyan
+    this.life = 1;
+    this.decay = Math.random() * 0.003 + 0.001;
+  }
+  update() {
+    this.y += this.speedY;
+    this.x += this.speedX;
+    this.life -= this.decay;
+    if (this.life <= 0 || this.y < -10) this.reset();
+  }
+  draw() {
+    pCtx.beginPath();
+    pCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    pCtx.fillStyle = `hsla(${this.hue}, 80%, 70%, ${this.opacity * this.life})`;
+    pCtx.fill();
+  }
+}
+
+function initParticles() {
+  particles = [];
+  for (let i = 0; i < 60; i++) particles.push(new Particle());
+}
+
+function animateParticles() {
+  pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+  particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(animateParticles);
+}
+
+initParticles();
+animateParticles();
+
+// ===== SCREENS =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ===== TITLE SCREEN =====
+function initTitle() {
+  const container = document.getElementById('titleCards');
+  const previewCards = CARDS_DB.filter(c => ['SSR', 'UR'].includes(c.rarity)).slice(0, 5);
+  container.innerHTML = previewCards.map(c => `
+    <div class="title-card-preview" style="background:${getElementGradient(c.element)};">
+      <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;">
+        <div style="font-size:1.8rem;">${c.art}</div>
+        <div style="font-size:0.45rem;font-weight:700;text-align:center;margin-top:4px;text-shadow:0 1px 3px rgba(0,0,0,0.8);">${c.name}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function getElementGradient(el) {
+  const map = {
+    fire:'linear-gradient(135deg,#ff6b35,#c0392b)',
+    water:'linear-gradient(135deg,#3498db,#1a3a6c)',
+    wood:'linear-gradient(135deg,#27ae60,#145a32)',
+    thunder:'linear-gradient(135deg,#f1c40f,#b7950b)',
+    dark:'linear-gradient(135deg,#6c3483,#1a0a2e)',
+    light:'linear-gradient(135deg,#f9e547,#daa520)'
+  };
+  return map[el] || map.fire;
+}
+
+// ===== CARD HTML GENERATOR =====
+function cardHTML(card, showFace = true) {
+  if (!showFace) {
+    return `<div class="card-back">🎴</div>`;
+  }
+  const isChar = card.type === 'character';
+  return `
+    <div class="card" data-element="${card.element}" data-rarity="${card.rarity}" data-uid="${card.uid}">
+      <div class="card-face">
+        <div class="card-top">
+          <div class="card-cost">${card.cost}</div>
+          <span class="card-rarity-badge" data-r="${card.rarity}">${card.rarity}</span>
+          <span class="card-element-icon">${ELEMENT_ICONS[card.element]}</span>
+        </div>
+        <div class="card-art">${card.art}</div>
+        <div class="card-name-text">${card.name}</div>
+        ${isChar ? `<div class="card-stats-row"><span class="stat-atk">⚔${card.atk}</span><span class="stat-hp">♥${card.hp}</span></div>` : `<div class="card-stats-row"><span class="stat-atk">⚔${card.atk}</span></div>`}
+        <div class="card-skill-text">${card.skill.name}: ${card.skill.desc}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ===== BATTLE INIT =====
+function startBattle() {
+  engine.reset();
+  engine.initDecks();
+  engine.initialDraw();
+  engine.startTurn();
+  selectedCardUid = null;
+
+  showScreen('battleScreen');
+  renderBattle();
+}
+
+// ===== RENDER =====
+function renderBattle() {
+  renderHP();
+  renderWaveGauge();
+  renderHand();
+  renderPlayerSlots();
+  renderEnemySlots();
+  renderTurnIndicator();
+  updateClashButton();
+}
+
+function renderHP() {
+  const pH = engine.player, eH = engine.enemy;
+  document.getElementById('playerHpBar').style.width = `${(pH.hp / pH.maxHp) * 100}%`;
+  document.getElementById('enemyHpBar').style.width = `${(eH.hp / eH.maxHp) * 100}%`;
+  document.getElementById('playerHpText').textContent = `${pH.hp}/${pH.maxHp}`;
+  document.getElementById('enemyHpText').textContent = `${eH.hp}/${eH.maxHp}`;
+}
+
+function renderWaveGauge() {
+  ['player', 'enemy'].forEach(who => {
+    const container = document.getElementById(who + 'Wave');
+    const wave = engine[who].wave;
+    container.innerHTML = Array.from({length: 5}, (_, i) =>
+      `<div class="wave-pip ${i < wave ? 'filled' : ''}"></div>`
+    ).join('');
+  });
+}
+
+function renderHand() {
+  const container = document.getElementById('handCards');
+  container.innerHTML = engine.player.hand.map(card => `
+    <div class="hand-card-wrapper ${selectedCardUid === card.uid ? 'selected' : ''}"
+         data-uid="${card.uid}" onclick="selectHandCard('${card.uid}')">
+      ${cardHTML(card, true)}
+    </div>
+  `).join('');
+}
+
+function renderPlayerSlots() {
+  const slots = document.querySelectorAll('.player-slot');
+  slots.forEach((slot, i) => {
+    const card = engine.player.slots[i];
+    if (card) {
+      slot.innerHTML = `<span class="slot-label">SLOT ${i+1}</span>${cardHTML(card, true)}`;
+      slot.classList.add('has-card');
+      slot.classList.remove('droppable');
+    } else {
+      slot.innerHTML = `<span class="slot-label">SLOT ${i+1}</span>`;
+      slot.classList.remove('has-card');
+      slot.classList.toggle('droppable', selectedCardUid !== null);
+    }
+  });
+}
+
+function renderEnemySlots() {
+  const slots = document.querySelectorAll('.enemy-slot');
+  slots.forEach((slot, i) => {
+    slot.innerHTML = `<span class="slot-label">SLOT ${i+1}</span>`;
+    slot.classList.remove('has-card');
+  });
+}
+
+function renderTurnIndicator() {
+  document.getElementById('turnIndicator').textContent = `TURN ${engine.turn}`;
+}
+
+function updateClashButton() {
+  const btn = document.getElementById('btnClash');
+  const hasAny = engine.player.slots.some(s => s !== null);
+  btn.disabled = !hasAny;
+  btn.classList.toggle('ready', hasAny);
+}
+
+// ===== INTERACTIONS =====
+function selectHandCard(uid) {
+  if (selectedCardUid === uid) {
+    selectedCardUid = null;
+  } else {
+    selectedCardUid = uid;
+  }
+  renderHand();
+  renderPlayerSlots();
+}
+
+// Slot click
+document.querySelectorAll('.player-slot').forEach(slot => {
+  slot.addEventListener('click', () => {
+    const idx = parseInt(slot.dataset.slot);
+    if (selectedCardUid) {
+      // Place card
+      engine.placeCard(idx, selectedCardUid);
+      selectedCardUid = null;
+      renderBattle();
+    } else if (engine.player.slots[idx]) {
+      // Remove card from slot
+      engine.removeFromSlot(idx);
+      renderBattle();
+    }
+  });
+});
+
+// Reset slots
+document.getElementById('btnResetSlots').addEventListener('click', () => {
+  for (let i = 0; i < 3; i++) engine.removeFromSlot(i);
+  selectedCardUid = null;
+  renderBattle();
+});
+
+// ===== CLASH! =====
+document.getElementById('btnClash').addEventListener('click', async () => {
+  if (engine.player.slots.every(s => s === null)) return;
+
+  // AI places cards
+  engine.aiPlaceCards();
+
+  // Show enemy cards briefly in slots
+  const eSlots = document.querySelectorAll('.enemy-slot');
+  engine.enemy.slots.forEach((card, i) => {
+    if (card) {
+      eSlots[i].innerHTML = `<span class="slot-label">SLOT ${i+1}</span><div class="card-back">🎴</div>`;
+      eSlots[i].classList.add('has-card');
+    }
+  });
+
+  // Disable interactions
+  document.getElementById('btnClash').disabled = true;
+
+  // Short delay then resolve
+  await sleep(600);
+
+  // Resolve clash
+  const results = engine.resolveClash();
+
+  // Show clash overlay
+  showClashResults(results);
+});
+
+function showClashResults(results) {
+  const overlay = document.getElementById('clashOverlay');
+  const container = document.getElementById('clashResults');
+  const summary = document.getElementById('clashSummary');
+
+  overlay.classList.add('active');
+
+  let html = '';
+  let totalPDmg = 0, totalEDmg = 0, totalPHeal = 0, totalEHeal = 0;
+
+  results.forEach((r, idx) => {
+    if (r.special === 'wave_strike') {
+      html += `
+        <div class="clash-slot-result" style="animation-delay:${idx * 0.3}s; border:1px solid var(--cyan);">
+          <div style="font-size:1.5rem;">⚡</div>
+          <div class="clash-result-text" style="color:var(--cyan);">
+            WAVE STRIKE!<br>
+            <span style="font-size:1.2rem;">${r.who === 'player' ? '적에게' : '나에게'} ${r.dmg} 데미지!</span>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    totalPDmg += r.playerDmg;
+    totalEDmg += r.enemyDmg;
+    totalPHeal += r.playerHeal;
+    totalEHeal += r.enemyHeal;
+
+    const pCard = r.playerCard;
+    const eCard = r.enemyCard;
+
+    const winClass = r.winner === 'player' ? 'win' : r.winner === 'enemy' ? 'lose' : r.winner === 'draw' ? 'draw' : '';
+    const winText = r.winner === 'player' ? '승리!' : r.winner === 'enemy' ? '패배!' : r.winner === 'draw' ? '무승부' : '—';
+
+    html += `
+      <div class="clash-slot-result" style="animation-delay:${idx * 0.3}s">
+        <div class="clash-card-mini" style="background:${pCard ? getElementGradient(pCard.element) : '#222'}; border-radius:8px;">
+          ${pCard ? `<div>${pCard.art}</div><div style="font-size:0.5rem;">${pCard.name}</div><div>⚔${engine.getEffectiveAtk ? pCard.atk : pCard.atk}</div>` : '<div style="color:#555;">비어있음</div>'}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div class="clash-vs">VS</div>
+          <div class="clash-result-text ${winClass}">${winText}</div>
+          ${r.enemyDmg > 0 ? `<div class="clash-dmg-text">적 -${r.enemyDmg} HP</div>` : ''}
+          ${r.playerDmg > 0 ? `<div class="clash-dmg-text">나 -${r.playerDmg} HP</div>` : ''}
+          ${r.playerHeal > 0 ? `<div class="clash-heal-text">나 +${r.playerHeal} HP</div>` : ''}
+        </div>
+        <div class="clash-card-mini" style="background:${eCard ? getElementGradient(eCard.element) : '#222'}; border-radius:8px;">
+          ${eCard ? `<div>${eCard.art}</div><div style="font-size:0.5rem;">${eCard.name}</div><div>⚔${eCard.atk}</div>` : '<div style="color:#555;">비어있음</div>'}
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+
+  // Summary
+  let summaryHTML = '<div style="margin-top:12px;">';
+  if (totalEDmg > 0) summaryHTML += `<span style="color:#2ecc71;font-weight:700;">적에게 총 ${totalEDmg} 데미지!</span> `;
+  if (totalPDmg > 0) summaryHTML += `<span style="color:#e74c3c;font-weight:700;">나에게 총 ${totalPDmg} 데미지!</span> `;
+  if (totalPHeal > 0) summaryHTML += `<span style="color:#2ecc71;font-weight:700;">HP ${totalPHeal} 회복!</span>`;
+  summaryHTML += '</div>';
+  summary.innerHTML = summaryHTML;
+
+  // Update HP display
+  renderHP();
+  renderWaveGauge();
+
+  // Check game end
+  const btnNext = document.getElementById('btnNextTurn');
+  if (engine.phase === 'end') {
+    btnNext.textContent = '결과 보기';
+    btnNext.onclick = showEndScreen;
+  } else {
+    btnNext.textContent = '다음 턴 →';
+    btnNext.onclick = nextTurn;
+  }
+}
+
+function nextTurn() {
+  document.getElementById('clashOverlay').classList.remove('active');
+  engine.startTurn();
+  selectedCardUid = null;
+  renderBattle();
+}
+
+function showEndScreen() {
+  document.getElementById('clashOverlay').classList.remove('active');
+  const overlay = document.getElementById('endOverlay');
+  const title = document.getElementById('endTitle');
+  const sub = document.getElementById('endSub');
+
+  overlay.classList.add('active');
+
+  if (engine.winner === 'player') {
+    title.textContent = 'VICTORY!';
+    title.className = 'end-title victory';
+    sub.textContent = `${engine.turn}턴 만에 승리! 적 HP: ${engine.enemy.hp}`;
+  } else if (engine.winner === 'enemy') {
+    title.textContent = 'DEFEAT...';
+    title.className = 'end-title defeat';
+    sub.textContent = `${engine.turn}턴에 패배... 내 HP: ${engine.player.hp}`;
+  } else {
+    title.textContent = 'DRAW';
+    title.className = 'end-title';
+    title.style.color = '#f1c40f';
+    sub.textContent = '무승부!';
+  }
+
+  // Burst particles for victory
+  if (engine.winner === 'player') {
+    for (let i = 0; i < 40; i++) {
+      const p = new Particle();
+      p.x = particleCanvas.width / 2;
+      p.y = particleCanvas.height / 2;
+      p.speedX = (Math.random() - 0.5) * 4;
+      p.speedY = (Math.random() - 0.5) * 4;
+      p.size = Math.random() * 4 + 1;
+      p.hue = Math.random() * 60 + 30; // gold
+      p.opacity = 1;
+      particles.push(p);
+    }
+  }
+}
+
+// Restart
+document.getElementById('btnRestart').addEventListener('click', () => {
+  document.getElementById('endOverlay').classList.remove('active');
+  startBattle();
+});
+
+// ===== START BUTTON =====
+document.getElementById('btnStart').addEventListener('click', startBattle);
+
+// ===== UTIL =====
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ===== INIT =====
+initTitle();
+
+</script>
+</body>
+</html>
