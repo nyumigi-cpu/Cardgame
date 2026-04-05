@@ -1,0 +1,133 @@
+[
+  {
+    "id": "char_001",
+    "name": "화염의 검사 아카네",
+    "rarity": "SSR",
+    "element": "fire",
+    "type": "character",
+    "cost": 5,
+    "atk": 7,
+    "hp": 5,
+    "skill": {
+      "name": "블레이즈 슬래시",
+      "description": "적 캐릭터 1체에 ATK+2 데미지, 목 속성이면 추가 3 데미지",
+      "effect": { "type": "damage", "base": "atk+2", "bonus": { "vs_element": "wood", "amount": 3 } }
+    },
+    "flavor_text": "불꽃은 내 검에서 태어나 적의 잿더미 위에서 잠든다."
+  },
+  {
+    "id": "char_002",
+    "name": "수호의 무녀 미즈키",
+    "rarity": "SR",
+    "element": "water",
+    "type": "character",
+    "cost": 4,
+    "atk": 3,
+    "hp": 8,
+    "skill": {
+      "name": "치유의 물결",
+      "description": "아군 전체 HP 2 회복",
+      "effect": { "type": "heal", "target": "all_allies", "amount": 2 }
+    },
+    "flavor_text": "이 물은 상처를 씻고, 마음을 채워줍니다."
+  },
+  {
+    "id": "char_003",
+    "name": "번개 고양이 라이냥",
+    "rarity": "R",
+    "element": "thunder",
+    "type": "character",
+    "cost": 2,
+    "atk": 4,
+    "hp": 3,
+    "skill": {
+      "name": "스파크 러시",
+      "description": "소환 즉시 적 캐릭터 1체에 2 데미지",
+      "effect": { "type": "damage", "target": "enemy_single", "amount": 2, "trigger": "on_summon" }
+    },
+    "flavor_text": "냥냥! 찌릿찌릿하다냥~!"
+  },
+  {
+    "id": "char_004",
+    "name": "숲의 정령 리아나",
+    "rarity": "SR",
+    "element": "wood",
+    "type": "character",
+    "cost": 3,
+    "atk": 4,
+    "hp": 6,
+    "skill": {
+      "name": "자연의 가시",
+      "description": "공격 시 상대에게 받은 데미지의 1을 반사",
+      "effect": { "type": "reflect", "amount": 1 }
+    },
+    "flavor_text": "숲이 살아 숨 쉬는 한, 나도 쓰러지지 않아."
+  },
+  {
+    "id": "char_005",
+    "name": "암흑기사 제로",
+    "rarity": "SSR",
+    "element": "dark",
+    "type": "character",
+    "cost": 6,
+    "atk": 8,
+    "hp": 6,
+    "skill": {
+      "name": "다크 이클립스",
+      "description": "적 캐릭터 1체에 ATK 데미지 + 광 속성이면 즉사",
+      "effect": { "type": "damage", "base": "atk", "bonus": { "vs_element": "light", "instant_kill": true } }
+    },
+    "flavor_text": "빛이 있는 곳에 반드시 그림자가 있다. 나는 그 그림자다."
+  },
+  {
+    "id": "char_006",
+    "name": "성녀 루미나",
+    "rarity": "SSR",
+    "element": "light",
+    "type": "character",
+    "cost": 6,
+    "atk": 5,
+    "hp": 9,
+    "skill": {
+      "name": "홀리 래디언스",
+      "description": "아군 전체 HP 3 회복 + 암 속성 적에게 5 데미지",
+      "effect": { "type": "multi", "effects": [
+        { "type": "heal", "target": "all_allies", "amount": 3 },
+        { "type": "damage", "target": "enemy_element", "element": "dark", "amount": 5 }
+      ]}
+    },
+    "flavor_text": "어둠이 짙을수록, 빛은 더 눈부시게 빛나는 법이에요."
+  },
+  {
+    "id": "spell_001",
+    "name": "화염폭풍",
+    "rarity": "R",
+    "element": "fire",
+    "type": "spell",
+    "cost": 3,
+    "atk": null,
+    "hp": null,
+    "skill": {
+      "name": "화염폭풍",
+      "description": "적 전체에 3 데미지",
+      "effect": { "type": "damage", "target": "all_enemies", "amount": 3 }
+    },
+    "flavor_text": "하늘에서 불이 비처럼 쏟아진다."
+  },
+  {
+    "id": "spell_002",
+    "name": "마나 충전",
+    "rarity": "N",
+    "element": "light",
+    "type": "spell",
+    "cost": 1,
+    "atk": null,
+    "hp": null,
+    "skill": {
+      "name": "마나 충전",
+      "description": "이번 턴 코스트를 2 추가 획득",
+      "effect": { "type": "mana", "amount": 2 }
+    },
+    "flavor_text": "마력이 넘쳐흐른다!"
+  }
+]
