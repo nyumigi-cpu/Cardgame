@@ -88,17 +88,6 @@ box-shadow:0 10px 40px rgba(0,0,0,.6);
 #custom-wrap{width:38px;height:38px;border-radius:8px;overflow:hidden;position:relative;border:2px solid rgba(255,255,255,.1);background:#2a2a4a;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
 #custom-input{position:absolute;width:200%;height:200%;top:-50%;left:-50%;opacity:0;cursor:pointer;}
 
-#save-menu{
-position:absolute;bottom:calc(env(safe-area-inset-bottom,0) + 100px);right:10px;
-background:var(--surface);border:1px solid var(--border);border-radius:14px;
-overflow:hidden;display:none;z-index:30;min-width:155px;
-box-shadow:0 10px 40px rgba(0,0,0,.6);
-}
-#save-menu.open{display:block;}
-.s-opt{padding:15px 18px;color:var(--text);font-size:14px;cursor:pointer;display:flex;align-items:center;gap:10px;font-family:-apple-system,sans-serif;-webkit-user-select:none;user-select:none;}
-.s-opt:not(:last-child){border-bottom:1px solid var(--border);}
-.s-opt:active{background:var(--surface2);}
-
 #toast{
 position:fixed;top:calc(env(safe-area-inset-top,0) + 58px);left:50%;
 transform:translateX(-50%) translateY(-12px);
@@ -131,13 +120,10 @@ border:1px solid var(--border);pointer-events:none;font-family:-apple-system,san
     <button class="btn ico" id="btn-prev">‹</button>
     <button class="btn ico" id="btn-next">›</button>
     <button class="btn ico" id="btn-undo">↩</button>
+    <button class="btn ico" id="btn-close">✕</button>
   </div>
 
   <div id="palette"></div>
-  <div id="save-menu">
-    <div class="s-opt" id="opt-new">➕ 새로저장</div>
-    <div class="s-opt" id="opt-over">🔄 덮어씌기</div>
-  </div>
 
   <div id="toolbar">
     <div class="row">
@@ -152,7 +138,7 @@ border:1px solid var(--border);pointer-events:none;font-family:-apple-system,san
         <span class="sz-label" id="sz-display">30</span>
         <input type="range" id="sz-slider" min="4" max="160" value="30">
       </div>
-      <button class="btn ico" id="btn-save">💾</button>
+      <button class="btn txt" id="btn-save">💾 저장</button>
     </div>
   </div>
   <div id="toast"></div>
@@ -170,7 +156,6 @@ const empty=document.getElementById('empty');
 const fileInput=document.getElementById('file-input');
 const fileInfo=document.getElementById('file-info');
 const palette=document.getElementById('palette');
-const saveMenu=document.getElementById('save-menu');
 const toast=document.getElementById('toast');
 const szSlider=document.getElementById('sz-slider');
 const szDisplay=document.getElementById('sz-display');
@@ -306,24 +291,40 @@ canvas.addEventListener('mousemove',e=>{if(!S.painting){drawCursor(e.clientX,e.c
 canvas.addEventListener('mouseup',()=>S.painting=false);
 canvas.addEventListener('mouseleave',()=>{S.painting=false;clearCursor();});
 
-function doSave(overwrite){
+// SAVE
+function doSave(){
   if(S.idx<0){showToast('이미지를 먼저 불러오세요');return;}
-  saveMenu.classList.remove('open');
   const dataUrl=canvas.toDataURL('image/jpeg',0.96);
   const w=window.open('');
   if(!w){showToast('팝업 차단 해제 후 다시 시도');return;}
   w.document.write('<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;background:#000;}img{width:100%;display:block;}p{color:#888;font-size:14px;padding:14px;font-family:-apple-system,sans-serif;text-align:center;}</style></head><body><img src="'+dataUrl+'"><p>이미지 길게 누르기 → 사진에 추가</p></body></html>');
   w.document.close();
-  showToast('새 탭: 이미지 길게 눌러 저장',3000);
-  setTimeout(()=>{ if(S.idx+1<S.imgs.length) goTo(S.idx+1); },600);
+  showToast('길게 눌러서 갤러리에 저장하세요',3000);
 }
 
+// CLOSE IMAGE
+function closeImage(){
+  if(S.idx<0)return;
+  S.imgs.splice(S.idx,1);
+  S.undos.splice(S.idx,1);
+  if(S.imgs.length===0){
+    S.idx=-1;
+    canvas.width=0;canvas.height=0;
+    empty.style.display='';
+    updateInfo();
+  }else{
+    goTo(Math.min(S.idx,S.imgs.length-1));
+  }
+}
+
+// TOAST
 let toastT;
 function showToast(msg,dur=2000){
   toast.textContent=msg;toast.classList.add('show');
   clearTimeout(toastT);toastT=setTimeout(()=>toast.classList.remove('show'),dur);
 }
 
+// BUTTON BINDINGS
 document.getElementById('btn-undo').addEventListener('click',undo);
 document.getElementById('btn-prev').addEventListener('click',()=>goTo(S.idx-1));
 document.getElementById('btn-next').addEventListener('click',()=>goTo(S.idx+1));
@@ -331,11 +332,13 @@ document.getElementById('btn-pen').addEventListener('click',()=>{S.brush='pen';s
 document.getElementById('btn-soft').addEventListener('click',()=>{S.brush='soft';syncUI();});
 document.getElementById('btn-eraser').addEventListener('click',()=>{S.brush=S.brush==='eraser'?'pen':'eraser';syncUI();});
 szSlider.addEventListener('input',e=>{S.size=+e.target.value;szDisplay.textContent=S.size;});
-colorDot.addEventListener('click',()=>{palette.classList.toggle('open');saveMenu.classList.remove('open');});
-document.getElementById('btn-save').addEventListener('click',()=>{saveMenu.classList.toggle('open');palette.classList.remove('open');});
-document.getElementById('opt-new').addEventListener('click',()=>doSave(false));
-document.getElementById('opt-over').addEventListener('click',()=>doSave(true));
-wrap.addEventListener('touchstart',()=>{palette.classList.remove('open');saveMenu.classList.remove('open');},{passive:true});
+colorDot.addEventListener('click',()=>palette.classList.toggle('open'));
+document.getElementById('btn-save').addEventListener('click',()=>{palette.classList.remove('open');doSave();});
+document.getElementById('btn-close').addEventListener('click',()=>{
+  if(S.idx<0)return;
+  if(confirm('이 사진을 목록에서 제거할까요?'))closeImage();
+});
+wrap.addEventListener('touchstart',()=>palette.classList.remove('open'),{passive:true});
 window.addEventListener('resize',()=>{if(S.idx>=0)renderImage();});
 
 // AUTO DETECT (TensorFlow.js MoveNet)
