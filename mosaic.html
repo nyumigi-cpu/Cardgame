@@ -145,6 +145,7 @@ border:1px solid var(--border);pointer-events:none;font-family:-apple-system,san
       <button class="btn txt active" id="btn-pen">✒️ 펜</button>
       <button class="btn txt" id="btn-soft">☁️ 소프트</button>
       <button class="btn ico" id="btn-eraser">◻️</button>
+      <button class="btn ico" id="btn-auto" title="자동 감지">🎯</button>
     </div>
     <div class="row">
       <div class="slider-wrap">
@@ -348,6 +349,69 @@ document.getElementById('opt-new').addEventListener('click',()=>doSave(false));
 document.getElementById('opt-over').addEventListener('click',()=>doSave(true));
 wrap.addEventListener('touchstart',()=>{palette.classList.remove('open');saveMenu.classList.remove('open');},{passive:true});
 window.addEventListener('resize',()=>{if(S.idx>=0)renderImage();});
+
+// AUTO DETECT
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    if(document.querySelector(`script[src="${src}"]`)){res();return;}
+    const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);
+  });
+}
+let autoDetector=null;
+async function autoMosaic(){
+  if(S.idx<0){showToast('이미지를 먼저 불러오세요');return;}
+  const btn=document.getElementById('btn-auto');
+  btn.textContent='⏳';btn.disabled=true;
+  showToast('AI 분석 중...📡',15000);
+  try{
+    if(!autoDetector){
+      await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js');
+      autoDetector=await poseDetection.createDetector(
+        poseDetection.SupportedModels.MoveNet,
+        {modelType:poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING}
+      );
+    }
+    const im=S.imgs[S.idx];
+    const poses=await autoDetector.estimatePoses(im.img);
+    if(!poses.length){showToast('인물을 찾지 못했어요');btn.textContent='🎯';btn.disabled=false;return;}
+    const kp=poses[0].keypoints;
+    const lHip=kp[11],rHip=kp[12],lKnee=kp[13],rKnee=kp[14];
+    if(lHip.score<0.3&&rHip.score<0.3){showToast('위치를 찾지 못했어요');btn.textContent='🎯';btn.disabled=false;return;}
+    let cx,cy,hipW;
+    if(lHip.score>=0.3&&rHip.score>=0.3){
+      cx=(lHip.x+rHip.x)/2;cy=(lHip.y+rHip.y)/2;hipW=Math.abs(rHip.x-lHip.x);
+    }else if(lHip.score>=0.3){
+      cx=lHip.x;cy=lHip.y;hipW=im.w*0.15;
+    }else{
+      cx=rHip.x;cy=rHip.y;hipW=im.w*0.15;
+    }
+    // 사타구니 위치 = 엉덩이에서 무릎 방향으로 약 25%
+    if(lKnee.score>0.3||rKnee.score>0.3){
+      const ky=lKnee.score>rKnee.score?lKnee.y:rKnee.y;
+      cy=cy+(ky-cy)*0.25;
+    }else{
+      cy+=hipW*0.35;
+    }
+    pushUndo();
+    const sz=Math.max(hipW*1.0,im.w*0.08);
+    const{r,g,b}=hex2rgb(S.color);
+    const pts=[[cx,cy],[cx-sz*.3,cy],[cx+sz*.3,cy],[cx,cy-sz*.25],[cx,cy+sz*.25],[cx-sz*.2,cy-sz*.2],[cx+sz*.2,cy-sz*.2],[cx-sz*.2,cy+sz*.2],[cx+sz*.2,cy+sz*.2]];
+    pts.forEach(([px,py])=>{
+      const gr=ctx.createRadialGradient(px,py,0,px,py,sz);
+      gr.addColorStop(0,`rgba(${r},${g},${b},1)`);
+      gr.addColorStop(.45,`rgba(${r},${g},${b},.85)`);
+      gr.addColorStop(.75,`rgba(${r},${g},${b},.4)`);
+      gr.addColorStop(1,`rgba(${r},${g},${b},0)`);
+      ctx.fillStyle=gr;ctx.beginPath();ctx.arc(px,py,sz,0,Math.PI*2);ctx.fill();
+    });
+    showToast('자동 모자이크 완료! ✅');
+  }catch(e){
+    showToast('오류: '+e.message);console.error(e);
+  }
+  btn.textContent='🎯';btn.disabled=false;
+}
+document.getElementById('btn-auto').addEventListener('click',autoMosaic);
 
 // WAKE LOCK
 (async()=>{try{if('wakeLock' in navigator){let wl=await navigator.wakeLock.request('screen');document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible')wl=await navigator.wakeLock.request('screen');});}}catch(e){}})();
