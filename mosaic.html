@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -9,50 +8,25 @@
 <title>WhitePaint</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-:root{
-  --bg:#0c0c14;--surface:#181828;--surface2:#22223a;
-  --border:rgba(255,255,255,0.07);--text:#d8d8f0;--dim:#50507a;
-  --accent:#8b7fff;
-}
+:root{--bg:#0c0c14;--surface:#181828;--surface2:#22223a;--border:rgba(255,255,255,0.07);--text:#d8d8f0;--dim:#50507a;--accent:#8b7fff;}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);}
 body{display:flex;justify-content:center;align-items:center;}
 #app{width:100%;max-width:430px;height:100dvh;position:relative;display:flex;flex-direction:column;background:var(--bg);}
 
 #canvas-wrap{flex:1;position:relative;overflow:hidden;background:#111120;}
-#main-canvas{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);touch-action:none;}
+#main-canvas{position:absolute;top:50%;left:50%;transform-origin:center center;touch-action:none;}
 #cursor-layer{position:absolute;inset:0;pointer-events:none;z-index:5;}
 
-#empty{
-position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-text-align:center;pointer-events:none;
-font-family:-apple-system,sans-serif;
-}
+#empty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;font-family:-apple-system,sans-serif;}
 #empty .ico{font-size:52px;opacity:.25;margin-bottom:14px;}
 #empty .hint{color:var(--dim);font-size:13px;line-height:1.8;}
 
-#header{
-position:absolute;top:0;left:0;right:0;z-index:20;
-padding:env(safe-area-inset-top,0) 10px 0;
-height:calc(52px + env(safe-area-inset-top,0));
-display:flex;align-items:flex-end;gap:6px;
-background:linear-gradient(to bottom,rgba(12,12,20,.97) 80%,transparent);
-}
+#header{position:absolute;top:0;left:0;right:0;z-index:20;padding:env(safe-area-inset-top,0) 10px 0;height:calc(52px + env(safe-area-inset-top,0));display:flex;align-items:flex-end;gap:6px;background:linear-gradient(to bottom,rgba(12,12,20,.97) 80%,transparent);}
 
-#toolbar{
-position:absolute;bottom:0;left:0;right:0;z-index:20;
-padding:8px 10px calc(env(safe-area-inset-bottom,0) + 8px);
-background:linear-gradient(to top,rgba(12,12,20,.98) 80%,transparent);
-display:flex;flex-direction:column;gap:7px;
-}
+#toolbar{position:absolute;bottom:0;left:0;right:0;z-index:20;padding:8px 10px calc(env(safe-area-inset-bottom,0) + 8px);background:linear-gradient(to top,rgba(12,12,20,.98) 80%,transparent);display:flex;flex-direction:column;gap:7px;}
 .row{display:flex;align-items:center;gap:6px;}
 
-.btn{
-display:flex;align-items:center;justify-content:center;
-border:none;border-radius:10px;background:var(--surface2);
-color:var(--text);border:1px solid var(--border);
-font-family:-apple-system,sans-serif;
--webkit-user-select:none;user-select:none;cursor:pointer;
-}
+.btn{display:flex;align-items:center;justify-content:center;border:none;border-radius:10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);font-family:-apple-system,sans-serif;-webkit-user-select:none;user-select:none;cursor:pointer;}
 .btn:active{opacity:.65;}
 .btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
 .btn.ico{width:40px;height:40px;font-size:18px;}
@@ -60,56 +34,34 @@ font-family:-apple-system,sans-serif;
 
 #open-wrap{position:relative;width:40px;height:40px;flex-shrink:0;}
 #open-btn{width:40px;height:40px;pointer-events:none;position:absolute;inset:0;}
-#file-input{
-position:absolute;inset:0;
-width:100%;height:100%;
-opacity:0;cursor:pointer;
-font-size:0;z-index:2;
-}
+#file-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0;z-index:2;}
 
 #file-info{color:var(--dim);font-size:11px;font-weight:700;flex:1;text-align:center;font-family:-apple-system,sans-serif;-webkit-user-select:none;user-select:none;}
-
 #color-dot{width:40px;height:40px;border-radius:10px;border:2px solid rgba(255,255,255,.18);cursor:pointer;flex-shrink:0;-webkit-user-select:none;user-select:none;}
-
 .slider-wrap{flex:1;display:flex;align-items:center;gap:8px;}
 .sz-label{color:var(--dim);font-size:11px;font-weight:700;min-width:26px;text-align:center;font-family:-apple-system,sans-serif;-webkit-user-select:none;user-select:none;}
 input[type=range]{-webkit-appearance:none;flex:1;height:3px;border-radius:2px;background:var(--surface2);outline:none;}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent);cursor:pointer;}
 
-#palette{
-position:absolute;bottom:calc(env(safe-area-inset-bottom,0) + 100px);left:10px;
-background:var(--surface);border:1px solid var(--border);border-radius:16px;
-padding:12px;display:none;flex-wrap:wrap;gap:8px;width:204px;z-index:30;
-box-shadow:0 10px 40px rgba(0,0,0,.6);
-}
+#palette{position:absolute;bottom:calc(env(safe-area-inset-bottom,0) + 100px);left:10px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:12px;display:none;flex-wrap:wrap;gap:8px;width:204px;z-index:30;box-shadow:0 10px 40px rgba(0,0,0,.6);}
 #palette.open{display:flex;}
 .sw{width:38px;height:38px;border-radius:8px;cursor:pointer;border:2px solid rgba(255,255,255,.1);-webkit-user-select:none;user-select:none;}
 .sw.sel{border-color:var(--accent);box-shadow:0 0 8px var(--accent);}
 #custom-wrap{width:38px;height:38px;border-radius:8px;overflow:hidden;position:relative;border:2px solid rgba(255,255,255,.1);background:#2a2a4a;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
 #custom-input{position:absolute;width:200%;height:200%;top:-50%;left:-50%;opacity:0;cursor:pointer;}
 
-#save-menu{
-position:absolute;bottom:calc(env(safe-area-inset-bottom,0) + 100px);right:10px;
-background:var(--surface);border:1px solid var(--border);border-radius:14px;
-overflow:hidden;display:none;z-index:30;min-width:155px;
-box-shadow:0 10px 40px rgba(0,0,0,.6);
-}
-#save-menu.open{display:block;}
-.s-opt{padding:15px 18px;color:var(--text);font-size:14px;cursor:pointer;display:flex;align-items:center;gap:10px;font-family:-apple-system,sans-serif;-webkit-user-select:none;user-select:none;}
-.s-opt:not(:last-child){border-bottom:1px solid var(--border);}
-.s-opt:active{background:var(--surface2);}
+/* 저장 오버레이 */
+#save-overlay{position:fixed;inset:0;z-index:50;background:#000;display:none;flex-direction:column;}
+#save-overlay.open{display:flex;}
+#save-hd{padding:calc(env(safe-area-inset-top,0) + 10px) 14px 12px;display:flex;align-items:center;gap:14px;background:rgba(12,12,20,.95);border-bottom:1px solid var(--border);flex-shrink:0;}
+#save-back-btn{background:none;border:none;color:var(--accent);font-size:15px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;padding:0;-webkit-user-select:none;user-select:none;}
+#save-hd span{color:var(--dim);font-size:12px;font-family:-apple-system,sans-serif;}
+#save-img-wrap{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:10px;}
+#save-img{max-width:100%;border-radius:8px;display:block;}
 
-#toast{
-position:fixed;top:calc(env(safe-area-inset-top,0) + 58px);left:50%;
-transform:translateX(-50%) translateY(-12px);
-background:rgba(26,26,46,.96);color:var(--text);
-padding:10px 22px;border-radius:24px;font-size:13px;font-weight:500;
-z-index:100;opacity:0;transition:all .25s;white-space:nowrap;
-border:1px solid var(--border);pointer-events:none;font-family:-apple-system,sans-serif;
-}
+#toast{position:fixed;top:calc(env(safe-area-inset-top,0) + 58px);left:50%;transform:translateX(-50%) translateY(-12px);background:rgba(26,26,46,.96);color:var(--text);padding:10px 22px;border-radius:24px;font-size:13px;font-weight:500;z-index:100;opacity:0;transition:all .25s;white-space:nowrap;border:1px solid var(--border);pointer-events:none;font-family:-apple-system,sans-serif;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
-
 </head>
 <body>
 <div id="app">
@@ -135,7 +87,6 @@ border:1px solid var(--border);pointer-events:none;font-family:-apple-system,san
   </div>
 
   <div id="palette"></div>
-  <div id="save-menu"></div>
 
   <div id="toolbar">
     <div class="row">
@@ -143,7 +94,7 @@ border:1px solid var(--border);pointer-events:none;font-family:-apple-system,san
       <button class="btn txt active" id="btn-pen">✒️ 펜</button>
       <button class="btn txt" id="btn-soft">☁️ 소프트</button>
       <button class="btn ico" id="btn-eraser">◻️</button>
-      <button class="btn ico" id="btn-auto" title="자동 감지">🎯</button>
+      <button class="btn ico" id="btn-auto">🎯</button>
     </div>
     <div class="row">
       <div class="slider-wrap">
@@ -153,11 +104,26 @@ border:1px solid var(--border);pointer-events:none;font-family:-apple-system,san
       <button class="btn txt" id="btn-save">💾 저장</button>
     </div>
   </div>
+
+  <!-- 저장 오버레이 -->
+  <div id="save-overlay">
+    <div id="save-hd">
+      <button id="save-back-btn">← 뒤로</button>
+      <span>이미지 길게 누르기 → 사진에 추가</span>
+    </div>
+    <div id="save-img-wrap">
+      <img id="save-img" alt="">
+    </div>
+  </div>
+
   <div id="toast"></div>
 </div>
 
 <script>
 const S={imgs:[],idx:-1,undos:[],maxUndo:18,brush:'pen',size:30,color:'#ffffff',painting:false,lx:0,ly:0,scale:1};
+const V={scale:1,tx:0,ty:0};
+let pinching=false,pinchDist0=0,pinchCx=0,pinchCy=0;
+let lastTap=0;
 
 const wrap=document.getElementById('canvas-wrap');
 const canvas=document.getElementById('main-canvas');
@@ -168,11 +134,18 @@ const empty=document.getElementById('empty');
 const fileInput=document.getElementById('file-input');
 const fileInfo=document.getElementById('file-info');
 const palette=document.getElementById('palette');
-const saveMenu=document.getElementById('save-menu');
 const toast=document.getElementById('toast');
 const szSlider=document.getElementById('sz-slider');
 const szDisplay=document.getElementById('sz-display');
 const colorDot=document.getElementById('color-dot');
+
+// VIEW TRANSFORM
+function applyView(){
+  canvas.style.transform=`translate(calc(-50% + ${V.tx}px), calc(-50% + ${V.ty}px)) scale(${V.scale})`;
+}
+function resetView(offsetY){
+  V.scale=1;V.tx=0;V.ty=offsetY||0;applyView();
+}
 
 // PALETTE
 const COLORS=['#ffffff','#e0e0e0','#aaaaaa','#555555','#111111','#ff6b6b','#ff9f43','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff6bbd','#a8f0e0','#ffe0a8','#b0d0ff'];
@@ -203,20 +176,16 @@ function syncUI(){
 
 // FILE LOAD
 fileInput.addEventListener('change',e=>{
-  const files=Array.from(e.target.files);
-  e.target.value='';
+  const files=Array.from(e.target.files);e.target.value='';
   if(!files.length)return;
-  const startIdx=S.imgs.length;
-  let done=0;
+  const startIdx=S.imgs.length;let done=0;
   files.forEach(f=>{
     const url=URL.createObjectURL(f);
     const img=new Image();
     img.onload=()=>{
       S.imgs.push({file:f,url,img,w:img.naturalWidth,h:img.naturalHeight});
       S.undos.push([]);
-      if(++done===files.length){
-        goTo(startIdx);
-      }
+      if(++done===files.length)goTo(startIdx);
     };
     img.src=url;
   });
@@ -226,12 +195,21 @@ function goTo(idx){
   if(idx<0||idx>=S.imgs.length)return;
   S.idx=idx;renderImage();updateInfo();
 }
+
 function renderImage(){
   const im=S.imgs[S.idx];if(!im)return;
-  S.scale=Math.min(wrap.clientWidth/im.w,wrap.clientHeight/im.h,1);
+  const hdr=document.getElementById('header');
+  const tbar=document.getElementById('toolbar');
+  const hh=hdr.offsetHeight;
+  const th=tbar.offsetHeight;
+  const availW=wrap.clientWidth;
+  const availH=wrap.clientHeight-hh-th;
+  const offsetY=(hh-th)/2; // shift center to visible area
+  S.scale=Math.min(availW/im.w,availH/im.h,1);
   canvas.width=im.w;canvas.height=im.h;
   canvas.style.width=Math.round(im.w*S.scale)+'px';
   canvas.style.height=Math.round(im.h*S.scale)+'px';
+  resetView(offsetY);
   ctx.drawImage(im.img,0,0);
   empty.style.display='none';
 }
@@ -250,12 +228,15 @@ function undo(){
 }
 
 // DRAW
-function coords(cx,cy){const r=canvas.getBoundingClientRect();return{x:(cx-r.left)*(canvas.width/r.width),y:(cy-r.top)*(canvas.height/r.height)};}
+function coords(cx,cy){
+  const r=canvas.getBoundingClientRect();
+  return{x:(cx-r.left)*(canvas.width/r.width),y:(cy-r.top)*(canvas.height/r.height)};
+}
 function hex2rgb(h){return{r:parseInt(h.slice(1,3),16),g:parseInt(h.slice(3,5),16),b:parseInt(h.slice(5,7),16)};}
 
 function paint(cx,cy,first){
   const{x,y}=coords(cx,cy);
-  const sz=S.size/S.scale;
+  const sz=S.size/S.scale/V.scale;
   if(S.brush==='eraser'){
     ctx.save();ctx.beginPath();ctx.arc(x,y,sz,0,Math.PI*2);ctx.clip();
     ctx.drawImage(S.imgs[S.idx].img,0,0);ctx.restore();
@@ -296,47 +277,74 @@ function drawCursor(cx,cy){
 }
 function clearCursor(){cctx.clearRect(0,0,cursorCv.width,cursorCv.height);}
 
-// EVENTS - TOUCH
+// PINCH HELPERS
+function getDist(t){const dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.sqrt(dx*dx+dy*dy);}
+function getCenter(t){return{x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2};}
+
+// TOUCH EVENTS
 canvas.addEventListener('touchstart',e=>{
-  e.preventDefault();if(S.idx<0)return;
-  S.painting=true;pushUndo();
-  const t=e.touches[0];paint(t.clientX,t.clientY,true);drawCursor(t.clientX,t.clientY);
+  e.preventDefault();
+  palette.classList.remove('open');
+  if(S.idx<0)return;
+  if(e.touches.length>=2){
+    pinching=true;S.painting=false;
+    pinchDist0=getDist(e.touches);
+    const c=getCenter(e.touches);pinchCx=c.x;pinchCy=c.y;
+  }else if(e.touches.length===1&&!pinching){
+    // double-tap = reset zoom
+    const now=Date.now();
+    if(now-lastTap<280){resetView(V.ty);showToast('줌 초기화');}
+    lastTap=now;
+    S.painting=true;pushUndo();
+    const t=e.touches[0];paint(t.clientX,t.clientY,true);drawCursor(t.clientX,t.clientY);
+  }
 },{passive:false});
+
 canvas.addEventListener('touchmove',e=>{
-  e.preventDefault();if(!S.painting)return;
-  const t=e.touches[0];paint(t.clientX,t.clientY,false);drawCursor(t.clientX,t.clientY);
+  e.preventDefault();
+  if(e.touches.length>=2&&pinching){
+    const d=getDist(e.touches);
+    const c=getCenter(e.touches);
+    V.scale=Math.max(0.3,Math.min(8,V.scale*(d/pinchDist0)));
+    V.tx+=c.x-pinchCx;V.ty+=c.y-pinchCy;
+    pinchDist0=d;pinchCx=c.x;pinchCy=c.y;
+    applyView();
+  }else if(e.touches.length===1&&S.painting&&!pinching){
+    const t=e.touches[0];paint(t.clientX,t.clientY,false);drawCursor(t.clientX,t.clientY);
+  }
 },{passive:false});
-canvas.addEventListener('touchend',e=>{e.preventDefault();S.painting=false;clearCursor();},{passive:false});
-// EVENTS - MOUSE
+
+canvas.addEventListener('touchend',e=>{
+  e.preventDefault();
+  if(e.touches.length<2)pinching=false;
+  if(e.touches.length===0){S.painting=false;clearCursor();}
+},{passive:false});
+
+// MOUSE EVENTS
 canvas.addEventListener('mousedown',e=>{if(S.idx<0)return;S.painting=true;pushUndo();paint(e.clientX,e.clientY,true);});
 canvas.addEventListener('mousemove',e=>{if(!S.painting){drawCursor(e.clientX,e.clientY);return;}paint(e.clientX,e.clientY,false);drawCursor(e.clientX,e.clientY);});
 canvas.addEventListener('mouseup',()=>S.painting=false);
 canvas.addEventListener('mouseleave',()=>{S.painting=false;clearCursor();});
 
-// SAVE
+// SAVE (오버레이 방식)
 function doSave(){
   if(S.idx<0){showToast('이미지를 먼저 불러오세요');return;}
   const dataUrl=canvas.toDataURL('image/jpeg',0.96);
-  const w=window.open('');
-  if(!w){showToast('팝업 차단 해제 후 다시 시도');return;}
-  w.document.write('<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;background:#000;}img{width:100%;display:block;}p{color:#888;font-size:14px;padding:14px;font-family:-apple-system,sans-serif;text-align:center;}</style></head><body><img src="'+dataUrl+'"><p>이미지 길게 누르기 → 사진에 추가</p></body></html>');
-  w.document.close();
-  showToast('길게 눌러서 갤러리에 저장하세요',3000);
+  document.getElementById('save-img').src=dataUrl;
+  document.getElementById('save-overlay').classList.add('open');
 }
+document.getElementById('save-back-btn').addEventListener('click',()=>{
+  document.getElementById('save-overlay').classList.remove('open');
+});
 
 // CLOSE IMAGE
 function closeImage(){
   if(S.idx<0)return;
-  S.imgs.splice(S.idx,1);
-  S.undos.splice(S.idx,1);
+  S.imgs.splice(S.idx,1);S.undos.splice(S.idx,1);
   if(S.imgs.length===0){
-    S.idx=-1;
-    canvas.width=0;canvas.height=0;
-    empty.style.display='';
-    updateInfo();
-  }else{
-    goTo(Math.min(S.idx,S.imgs.length-1));
-  }
+    S.idx=-1;canvas.width=0;canvas.height=0;
+    empty.style.display='';updateInfo();
+  }else{goTo(Math.min(S.idx,S.imgs.length-1));}
 }
 
 // TOAST
@@ -346,7 +354,7 @@ function showToast(msg,dur=2000){
   clearTimeout(toastT);toastT=setTimeout(()=>toast.classList.remove('show'),dur);
 }
 
-// BUTTON BINDINGS
+// BUTTONS
 document.getElementById('btn-undo').addEventListener('click',undo);
 document.getElementById('btn-prev').addEventListener('click',()=>goTo(S.idx-1));
 document.getElementById('btn-next').addEventListener('click',()=>goTo(S.idx+1));
@@ -354,13 +362,13 @@ document.getElementById('btn-pen').addEventListener('click',()=>{S.brush='pen';s
 document.getElementById('btn-soft').addEventListener('click',()=>{S.brush='soft';syncUI();});
 document.getElementById('btn-eraser').addEventListener('click',()=>{S.brush=S.brush==='eraser'?'pen':'eraser';syncUI();});
 szSlider.addEventListener('input',e=>{S.size=+e.target.value;szDisplay.textContent=S.size;});
-colorDot.addEventListener('click',()=>{palette.classList.toggle('open');saveMenu.classList.remove('open');});
+colorDot.addEventListener('click',()=>palette.classList.toggle('open'));
 document.getElementById('btn-save').addEventListener('click',()=>{palette.classList.remove('open');doSave();});
 document.getElementById('btn-close').addEventListener('click',()=>{
   if(S.idx<0)return;
   if(confirm('이 사진을 목록에서 제거할까요?'))closeImage();
 });
-wrap.addEventListener('touchstart',()=>{palette.classList.remove('open');},{passive:true});
+wrap.addEventListener('touchstart',()=>palette.classList.remove('open'),{passive:true});
 window.addEventListener('resize',()=>{if(S.idx>=0)renderImage();});
 
 // AUTO DETECT
@@ -380,10 +388,7 @@ async function autoMosaic(){
     if(!autoDetector){
       await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js');
       await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js');
-      autoDetector=await poseDetection.createDetector(
-        poseDetection.SupportedModels.MoveNet,
-        {modelType:poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING}
-      );
+      autoDetector=await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet,{modelType:poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING});
     }
     const im=S.imgs[S.idx];
     const poses=await autoDetector.estimatePoses(im.img);
@@ -392,36 +397,23 @@ async function autoMosaic(){
     const lHip=kp[11],rHip=kp[12],lKnee=kp[13],rKnee=kp[14];
     if(lHip.score<0.3&&rHip.score<0.3){showToast('위치를 찾지 못했어요');btn.textContent='🎯';btn.disabled=false;return;}
     let cx,cy,hipW;
-    if(lHip.score>=0.3&&rHip.score>=0.3){
-      cx=(lHip.x+rHip.x)/2;cy=(lHip.y+rHip.y)/2;hipW=Math.abs(rHip.x-lHip.x);
-    }else if(lHip.score>=0.3){
-      cx=lHip.x;cy=lHip.y;hipW=im.w*0.15;
-    }else{
-      cx=rHip.x;cy=rHip.y;hipW=im.w*0.15;
-    }
-    // 사타구니 위치 = 엉덩이에서 무릎 방향으로 약 25%
-    if(lKnee.score>0.3||rKnee.score>0.3){
-      const ky=lKnee.score>rKnee.score?lKnee.y:rKnee.y;
-      cy=cy+(ky-cy)*0.25;
-    }else{
-      cy+=hipW*0.35;
-    }
+    if(lHip.score>=0.3&&rHip.score>=0.3){cx=(lHip.x+rHip.x)/2;cy=(lHip.y+rHip.y)/2;hipW=Math.abs(rHip.x-lHip.x);}
+    else if(lHip.score>=0.3){cx=lHip.x;cy=lHip.y;hipW=im.w*0.15;}
+    else{cx=rHip.x;cy=rHip.y;hipW=im.w*0.15;}
+    if(lKnee.score>0.3||rKnee.score>0.3){const ky=lKnee.score>rKnee.score?lKnee.y:rKnee.y;cy=cy+(ky-cy)*0.25;}
+    else{cy+=hipW*0.35;}
     pushUndo();
     const sz=Math.max(hipW*1.0,im.w*0.08);
     const{r,g,b}=hex2rgb(S.color);
     const pts=[[cx,cy],[cx-sz*.3,cy],[cx+sz*.3,cy],[cx,cy-sz*.25],[cx,cy+sz*.25],[cx-sz*.2,cy-sz*.2],[cx+sz*.2,cy-sz*.2],[cx-sz*.2,cy+sz*.2],[cx+sz*.2,cy+sz*.2]];
     pts.forEach(([px,py])=>{
       const gr=ctx.createRadialGradient(px,py,0,px,py,sz);
-      gr.addColorStop(0,`rgba(${r},${g},${b},1)`);
-      gr.addColorStop(.45,`rgba(${r},${g},${b},.85)`);
-      gr.addColorStop(.75,`rgba(${r},${g},${b},.4)`);
-      gr.addColorStop(1,`rgba(${r},${g},${b},0)`);
+      gr.addColorStop(0,`rgba(${r},${g},${b},1)`);gr.addColorStop(.45,`rgba(${r},${g},${b},.85)`);
+      gr.addColorStop(.75,`rgba(${r},${g},${b},.4)`);gr.addColorStop(1,`rgba(${r},${g},${b},0)`);
       ctx.fillStyle=gr;ctx.beginPath();ctx.arc(px,py,sz,0,Math.PI*2);ctx.fill();
     });
     showToast('자동 모자이크 완료! ✅');
-  }catch(e){
-    showToast('오류: '+e.message);console.error(e);
-  }
+  }catch(e){showToast('오류: '+e.message);console.error(e);}
   btn.textContent='🎯';btn.disabled=false;
 }
 document.getElementById('btn-auto').addEventListener('click',autoMosaic);
@@ -429,6 +421,5 @@ document.getElementById('btn-auto').addEventListener('click',autoMosaic);
 // WAKE LOCK
 (async()=>{try{if('wakeLock' in navigator){let wl=await navigator.wakeLock.request('screen');document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible')wl=await navigator.wakeLock.request('screen');});}}catch(e){}})();
 </script>
-
 </body>
 </html>
