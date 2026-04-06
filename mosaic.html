@@ -131,13 +131,11 @@ border:1px solid var(--border);pointer-events:none;font-family:-apple-system,san
     <button class="btn ico" id="btn-prev">‹</button>
     <button class="btn ico" id="btn-next">›</button>
     <button class="btn ico" id="btn-undo">↩</button>
+    <button class="btn ico" id="btn-close">✕</button>
   </div>
 
   <div id="palette"></div>
-  <div id="save-menu">
-    <div class="s-opt" id="opt-new">➕ 새로저장</div>
-    <div class="s-opt" id="opt-over">🔄 덮어씌기</div>
-  </div>
+  <div id="save-menu"></div>
 
   <div id="toolbar">
     <div class="row">
@@ -152,7 +150,7 @@ border:1px solid var(--border);pointer-events:none;font-family:-apple-system,san
         <span class="sz-label" id="sz-display">30</span>
         <input type="range" id="sz-slider" min="4" max="160" value="30">
       </div>
-      <button class="btn ico" id="btn-save">💾</button>
+      <button class="btn txt" id="btn-save">💾 저장</button>
     </div>
   </div>
   <div id="toast"></div>
@@ -316,16 +314,29 @@ canvas.addEventListener('mouseup',()=>S.painting=false);
 canvas.addEventListener('mouseleave',()=>{S.painting=false;clearCursor();});
 
 // SAVE
-function doSave(overwrite){
+function doSave(){
   if(S.idx<0){showToast('이미지를 먼저 불러오세요');return;}
-  saveMenu.classList.remove('open');
   const dataUrl=canvas.toDataURL('image/jpeg',0.96);
   const w=window.open('');
   if(!w){showToast('팝업 차단 해제 후 다시 시도');return;}
   w.document.write('<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;background:#000;}img{width:100%;display:block;}p{color:#888;font-size:14px;padding:14px;font-family:-apple-system,sans-serif;text-align:center;}</style></head><body><img src="'+dataUrl+'"><p>이미지 길게 누르기 → 사진에 추가</p></body></html>');
   w.document.close();
-  showToast('새 탭: 이미지 길게 눌러 저장',3000);
-  setTimeout(()=>{ if(S.idx+1<S.imgs.length) goTo(S.idx+1); },600);
+  showToast('길게 눌러서 갤러리에 저장하세요',3000);
+}
+
+// CLOSE IMAGE
+function closeImage(){
+  if(S.idx<0)return;
+  S.imgs.splice(S.idx,1);
+  S.undos.splice(S.idx,1);
+  if(S.imgs.length===0){
+    S.idx=-1;
+    canvas.width=0;canvas.height=0;
+    empty.style.display='';
+    updateInfo();
+  }else{
+    goTo(Math.min(S.idx,S.imgs.length-1));
+  }
 }
 
 // TOAST
@@ -344,10 +355,12 @@ document.getElementById('btn-soft').addEventListener('click',()=>{S.brush='soft'
 document.getElementById('btn-eraser').addEventListener('click',()=>{S.brush=S.brush==='eraser'?'pen':'eraser';syncUI();});
 szSlider.addEventListener('input',e=>{S.size=+e.target.value;szDisplay.textContent=S.size;});
 colorDot.addEventListener('click',()=>{palette.classList.toggle('open');saveMenu.classList.remove('open');});
-document.getElementById('btn-save').addEventListener('click',()=>{saveMenu.classList.toggle('open');palette.classList.remove('open');});
-document.getElementById('opt-new').addEventListener('click',()=>doSave(false));
-document.getElementById('opt-over').addEventListener('click',()=>doSave(true));
-wrap.addEventListener('touchstart',()=>{palette.classList.remove('open');saveMenu.classList.remove('open');},{passive:true});
+document.getElementById('btn-save').addEventListener('click',()=>{palette.classList.remove('open');doSave();});
+document.getElementById('btn-close').addEventListener('click',()=>{
+  if(S.idx<0)return;
+  if(confirm('이 사진을 목록에서 제거할까요?'))closeImage();
+});
+wrap.addEventListener('touchstart',()=>{palette.classList.remove('open');},{passive:true});
 window.addEventListener('resize',()=>{if(S.idx>=0)renderImage();});
 
 // AUTO DETECT
