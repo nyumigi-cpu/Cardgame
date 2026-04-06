@@ -136,15 +136,16 @@ border:1px solid var(--border);pointer-events:none;font-family:-apple-system,san
   <div id="palette"></div>
   <div id="save-menu">
     <div class="s-opt" id="opt-new">➕ 새로저장</div>
-    <div class="s-opt" id="opt-over">🔄 겹어씨기</div>
+    <div class="s-opt" id="opt-over">🔄 덮어씌기</div>
   </div>
 
   <div id="toolbar">
     <div class="row">
       <div id="color-dot" style="background:#ffffff"></div>
-      <button class="btn txt active" id="btn-pen">✌️ 펜</button>
+      <button class="btn txt active" id="btn-pen">✒️ 펜</button>
       <button class="btn txt" id="btn-soft">☁️ 소프트</button>
       <button class="btn ico" id="btn-eraser">◻️</button>
+      <button class="btn ico" id="btn-auto">🎯</button>
     </div>
     <div class="row">
       <div class="slider-wrap">
@@ -213,9 +214,7 @@ fileInput.addEventListener('change',e=>{
     img.onload=()=>{
       S.imgs.push({file:f,url,img,w:img.naturalWidth,h:img.naturalHeight});
       S.undos.push([]);
-      if(++done===files.length){
-        goTo(startIdx);
-      }
+      if(++done===files.length){ goTo(startIdx); }
     };
     img.src=url;
   });
@@ -234,7 +233,7 @@ function renderImage(){
   ctx.drawImage(im.img,0,0);
   empty.style.display='none';
 }
-function updateInfo(){fileInfo.textContent=S.imgs.length?`${S.idx+1} / ${S.imgs.length}`:'\u2014';}
+function updateInfo(){fileInfo.textContent=S.imgs.length?`${S.idx+1} / ${S.imgs.length}`:'—';}
 
 function pushUndo(){
   const st=S.undos[S.idx];if(!st)return;
@@ -243,7 +242,7 @@ function pushUndo(){
 }
 function undo(){
   const st=S.undos[S.idx];
-  if(!st||!st.length){showToast('\uB354 \uC774\uC0C1 \uC5C6\uC5B4\uC694');return;}
+  if(!st||!st.length){showToast('더 이상 없어요');return;}
   ctx.putImageData(st.pop(),0,0);
 }
 
@@ -308,14 +307,14 @@ canvas.addEventListener('mouseup',()=>S.painting=false);
 canvas.addEventListener('mouseleave',()=>{S.painting=false;clearCursor();});
 
 function doSave(overwrite){
-  if(S.idx<0){showToast('\uC774\uBBF8\uC9C0\uB97C \uBA3C\uC800 \uBD88\uB7EC\uC624\uC138\uC694');return;}
+  if(S.idx<0){showToast('이미지를 먼저 불러오세요');return;}
   saveMenu.classList.remove('open');
   const dataUrl=canvas.toDataURL('image/jpeg',0.96);
   const w=window.open('');
-  if(!w){showToast('\uD314\uC5C5 \uCC28\uB2E8 \uD574\uC81C \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4');return;}
-  w.document.write('<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;background:#000;}img{width:100%;display:block;}p{color:#888;font-size:14px;padding:14px;font-family:-apple-system,sans-serif;text-align:center;}</style></head><body><img src="'+dataUrl+'"><p>\uC774\uBBF8\uC9C0 \uAE38\uAC8C \uB204\uB974\uAE30 \u2192 \uC0AC\uC9C4\uC5D0 \uCD94\uAC00</p></body></html>');
+  if(!w){showToast('팝업 차단 해제 후 다시 시도');return;}
+  w.document.write('<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{margin:0;padding:0;background:#000;}img{width:100%;display:block;}p{color:#888;font-size:14px;padding:14px;font-family:-apple-system,sans-serif;text-align:center;}</style></head><body><img src="'+dataUrl+'"><p>이미지 길게 누르기 → 사진에 추가</p></body></html>');
   w.document.close();
-  showToast('\uC0C8 \uD0ED: \uC774\uBBF8\uC9C0 \uAE38\uAC8C \uB208\uB7EC \uC800\uC7A5',3000);
+  showToast('새 탭: 이미지 길게 눌러 저장',3000);
   setTimeout(()=>{ if(S.idx+1<S.imgs.length) goTo(S.idx+1); },600);
 }
 
@@ -338,6 +337,68 @@ document.getElementById('opt-new').addEventListener('click',()=>doSave(false));
 document.getElementById('opt-over').addEventListener('click',()=>doSave(true));
 wrap.addEventListener('touchstart',()=>{palette.classList.remove('open');saveMenu.classList.remove('open');},{passive:true});
 window.addEventListener('resize',()=>{if(S.idx>=0)renderImage();});
+
+// AUTO DETECT (TensorFlow.js MoveNet)
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    if(document.querySelector(`script[src="${src}"]`)){res();return;}
+    const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);
+  });
+}
+let autoDetector=null;
+async function autoMosaic(){
+  if(S.idx<0){showToast('이미지를 먼저 불러오세요');return;}
+  const btn=document.getElementById('btn-auto');
+  btn.textContent='⏳';btn.disabled=true;
+  showToast('AI 분석 중...📡',15000);
+  try{
+    if(!autoDetector){
+      await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js');
+      autoDetector=await poseDetection.createDetector(
+        poseDetection.SupportedModels.MoveNet,
+        {modelType:poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING}
+      );
+    }
+    const im=S.imgs[S.idx];
+    const poses=await autoDetector.estimatePoses(im.img);
+    if(!poses.length){showToast('인물을 찾지 못했어요');btn.textContent='🎯';btn.disabled=false;return;}
+    const kp=poses[0].keypoints;
+    const lHip=kp[11],rHip=kp[12],lKnee=kp[13],rKnee=kp[14];
+    if(lHip.score<0.3&&rHip.score<0.3){showToast('위치를 찾지 못했어요');btn.textContent='🎯';btn.disabled=false;return;}
+    let cx,cy,hipW;
+    if(lHip.score>=0.3&&rHip.score>=0.3){
+      cx=(lHip.x+rHip.x)/2;cy=(lHip.y+rHip.y)/2;hipW=Math.abs(rHip.x-lHip.x);
+    }else if(lHip.score>=0.3){
+      cx=lHip.x;cy=lHip.y;hipW=im.w*0.15;
+    }else{
+      cx=rHip.x;cy=rHip.y;hipW=im.w*0.15;
+    }
+    if(lKnee.score>0.3||rKnee.score>0.3){
+      const ky=lKnee.score>rKnee.score?lKnee.y:rKnee.y;
+      cy=cy+(ky-cy)*0.25;
+    }else{
+      cy+=hipW*0.35;
+    }
+    pushUndo();
+    const sz=Math.max(hipW*1.0,im.w*0.08);
+    const{r,g,b}=hex2rgb(S.color);
+    const pts=[[cx,cy],[cx-sz*.3,cy],[cx+sz*.3,cy],[cx,cy-sz*.25],[cx,cy+sz*.25],[cx-sz*.2,cy-sz*.2],[cx+sz*.2,cy-sz*.2],[cx-sz*.2,cy+sz*.2],[cx+sz*.2,cy+sz*.2]];
+    pts.forEach(([px,py])=>{
+      const gr=ctx.createRadialGradient(px,py,0,px,py,sz);
+      gr.addColorStop(0,`rgba(${r},${g},${b},1)`);
+      gr.addColorStop(.45,`rgba(${r},${g},${b},.85)`);
+      gr.addColorStop(.75,`rgba(${r},${g},${b},.4)`);
+      gr.addColorStop(1,`rgba(${r},${g},${b},0)`);
+      ctx.fillStyle=gr;ctx.beginPath();ctx.arc(px,py,sz,0,Math.PI*2);ctx.fill();
+    });
+    showToast('자동 모자이크 완료! ✅');
+  }catch(e){
+    showToast('오류: '+e.message);console.error(e);
+  }
+  btn.textContent='🎯';btn.disabled=false;
+}
+document.getElementById('btn-auto').addEventListener('click',autoMosaic);
 
 (async()=>{try{if('wakeLock' in navigator){let wl=await navigator.wakeLock.request('screen');document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible')wl=await navigator.wakeLock.request('screen');});}}catch(e){}})();
 </script>
