@@ -50,6 +50,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 #custom-wrap{width:38px;height:38px;border-radius:8px;overflow:hidden;position:relative;border:2px solid rgba(255,255,255,.1);background:#2a2a4a;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;}
 #custom-input{position:absolute;width:200%;height:200%;top:-50%;left:-50%;opacity:0;cursor:pointer;}
 
+/* 줌 게이지 */
+#zoom-gauge{position:absolute;bottom:calc(env(safe-area-inset-bottom,0) + 108px);left:50%;transform:translateX(-50%);background:rgba(12,12,20,.88);border:1px solid var(--border);border-radius:20px;padding:6px 14px;display:flex;align-items:center;gap:8px;z-index:25;opacity:0;transition:opacity .2s;pointer-events:none;}
+#zoom-gauge.show{opacity:1;}
+#zoom-bar-wrap{width:80px;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;}
+#zoom-bar{height:100%;background:var(--accent);border-radius:2px;transition:width .1s;}
+#zoom-pct{color:var(--text);font-size:11px;font-weight:700;font-family:-apple-system,sans-serif;min-width:34px;text-align:right;}
+
 /* 저장 오버레이 */
 #save-overlay{position:fixed;inset:0;z-index:50;background:#000;display:none;flex-direction:column;}
 #save-overlay.open{display:flex;}
@@ -87,6 +94,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
   </div>
 
   <div id="palette"></div>
+
+  <!-- 줌 게이지 -->
+  <div id="zoom-gauge">
+    <div id="zoom-bar-wrap"><div id="zoom-bar" style="width:12%"></div></div>
+    <span id="zoom-pct">100%</span>
+  </div>
 
   <div id="toolbar">
     <div class="row">
@@ -138,6 +151,22 @@ const toast=document.getElementById('toast');
 const szSlider=document.getElementById('sz-slider');
 const szDisplay=document.getElementById('sz-display');
 const colorDot=document.getElementById('color-dot');
+
+// ZOOM GAUGE
+const zoomGauge=document.getElementById('zoom-gauge');
+const zoomBar=document.getElementById('zoom-bar');
+const zoomPct=document.getElementById('zoom-pct');
+let zoomHideT=null;
+function updateZoomGauge(){
+  const pct=Math.round(V.scale*100);
+  const logMin=Math.log(0.3),logMax=Math.log(8);
+  const w=Math.max(2,Math.round(((Math.log(V.scale)-logMin)/(logMax-logMin))*100));
+  zoomBar.style.width=w+'%';
+  zoomPct.textContent=pct+'%';
+  zoomGauge.classList.add('show');
+  clearTimeout(zoomHideT);
+  zoomHideT=setTimeout(()=>zoomGauge.classList.remove('show'),1400);
+}
 
 // VIEW TRANSFORM
 function applyView(){
@@ -242,19 +271,24 @@ function paint(cx,cy,first){
     ctx.drawImage(S.imgs[S.idx].img,0,0);ctx.restore();
     S.lx=x;S.ly=y;return;
   }
+  const{r,g,b}=hex2rgb(S.color);
   ctx.save();
   if(S.brush==='soft'){
-    const{r,g,b}=hex2rgb(S.color);
+    // 에어브러시: 낮은 불투명도 + 넓은 페더 → 여러번 겹칠수록 자연스럽게 쌓임
     const gr=ctx.createRadialGradient(x,y,0,x,y,sz);
-    gr.addColorStop(0,`rgba(${r},${g},${b},1)`);
-    gr.addColorStop(.45,`rgba(${r},${g},${b},.85)`);
-    gr.addColorStop(.75,`rgba(${r},${g},${b},.4)`);
+    gr.addColorStop(0,`rgba(${r},${g},${b},.18)`);
+    gr.addColorStop(.3,`rgba(${r},${g},${b},.12)`);
+    gr.addColorStop(.65,`rgba(${r},${g},${b},.06)`);
     gr.addColorStop(1,`rgba(${r},${g},${b},0)`);
     ctx.fillStyle=gr;ctx.beginPath();ctx.arc(x,y,sz,0,Math.PI*2);ctx.fill();
   }else{
-    ctx.strokeStyle=S.color;ctx.lineWidth=sz;ctx.lineCap='round';ctx.lineJoin='round';
-    if(first){ctx.fillStyle=S.color;ctx.beginPath();ctx.arc(x,y,sz/2,0,Math.PI*2);ctx.fill();}
-    else{ctx.beginPath();ctx.moveTo(S.lx,S.ly);ctx.lineTo(x,y);ctx.stroke();}
+    // 펜: 약간 반투명하게 해서 겹칠 때 자연스럽게
+    ctx.strokeStyle=`rgba(${r},${g},${b},.92)`;
+    ctx.lineWidth=sz;ctx.lineCap='round';ctx.lineJoin='round';
+    if(first){
+      ctx.fillStyle=`rgba(${r},${g},${b},.92)`;
+      ctx.beginPath();ctx.arc(x,y,sz/2,0,Math.PI*2);ctx.fill();
+    }else{ctx.beginPath();ctx.moveTo(S.lx,S.ly);ctx.lineTo(x,y);ctx.stroke();}
   }
   ctx.restore();S.lx=x;S.ly=y;
 }
@@ -293,7 +327,7 @@ canvas.addEventListener('touchstart',e=>{
   }else if(e.touches.length===1&&!pinching){
     // double-tap = reset zoom
     const now=Date.now();
-    if(now-lastTap<280){resetView(V.ty);showToast('줌 초기화');}
+    if(now-lastTap<280){resetView(V.ty);updateZoomGauge();}
     lastTap=now;
     S.painting=true;pushUndo();
     const t=e.touches[0];paint(t.clientX,t.clientY,true);drawCursor(t.clientX,t.clientY);
@@ -308,7 +342,7 @@ canvas.addEventListener('touchmove',e=>{
     V.scale=Math.max(0.3,Math.min(8,V.scale*(d/pinchDist0)));
     V.tx+=c.x-pinchCx;V.ty+=c.y-pinchCy;
     pinchDist0=d;pinchCx=c.x;pinchCy=c.y;
-    applyView();
+    applyView();updateZoomGauge();
   }else if(e.touches.length===1&&S.painting&&!pinching){
     const t=e.touches[0];paint(t.clientX,t.clientY,false);drawCursor(t.clientX,t.clientY);
   }
