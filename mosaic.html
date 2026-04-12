@@ -274,21 +274,16 @@ function paint(cx,cy,first){
   const{r,g,b}=hex2rgb(S.color);
   ctx.save();
   if(S.brush==='soft'){
-    // 에어브러시: 낮은 불투명도 + 넓은 페더 → 여러번 겹칠수록 자연스럽게 쌓임
     const gr=ctx.createRadialGradient(x,y,0,x,y,sz);
-    gr.addColorStop(0,`rgba(${r},${g},${b},.18)`);
-    gr.addColorStop(.3,`rgba(${r},${g},${b},.12)`);
-    gr.addColorStop(.65,`rgba(${r},${g},${b},.06)`);
+    gr.addColorStop(0,`rgba(${r},${g},${b},1)`);
+    gr.addColorStop(.45,`rgba(${r},${g},${b},.85)`);
+    gr.addColorStop(.75,`rgba(${r},${g},${b},.4)`);
     gr.addColorStop(1,`rgba(${r},${g},${b},0)`);
     ctx.fillStyle=gr;ctx.beginPath();ctx.arc(x,y,sz,0,Math.PI*2);ctx.fill();
   }else{
-    // 펜: 약간 반투명하게 해서 겹칠 때 자연스럽게
-    ctx.strokeStyle=`rgba(${r},${g},${b},.92)`;
-    ctx.lineWidth=sz;ctx.lineCap='round';ctx.lineJoin='round';
-    if(first){
-      ctx.fillStyle=`rgba(${r},${g},${b},.92)`;
-      ctx.beginPath();ctx.arc(x,y,sz/2,0,Math.PI*2);ctx.fill();
-    }else{ctx.beginPath();ctx.moveTo(S.lx,S.ly);ctx.lineTo(x,y);ctx.stroke();}
+    ctx.strokeStyle=S.color;ctx.lineWidth=sz;ctx.lineCap='round';ctx.lineJoin='round';
+    if(first){ctx.fillStyle=S.color;ctx.beginPath();ctx.arc(x,y,sz/2,0,Math.PI*2);ctx.fill();}
+    else{ctx.beginPath();ctx.moveTo(S.lx,S.ly);ctx.lineTo(x,y);ctx.stroke();}
   }
   ctx.restore();S.lx=x;S.ly=y;
 }
